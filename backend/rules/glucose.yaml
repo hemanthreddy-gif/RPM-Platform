@@ -1,0 +1,9 @@
+code: GLU_LOW_L2
+version: 1
+applies_to: glucose
+severity: urgent
+condition: {all: [{field: value_mg_dl, op: '<', value: 54}]}
+message_key: glucose.low.urgent
+dedupe_window_min: 60
+requires_clinician_approval: true
+synthetic_demo_only: true

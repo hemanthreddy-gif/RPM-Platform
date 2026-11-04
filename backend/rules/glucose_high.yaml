@@ -1,0 +1,9 @@
+code: GLU_HIGH_URGENT
+version: 1
+applies_to: glucose
+severity: urgent
+condition: {all: [{field: value_mg_dl, op: '>=', value: 300}]}
+message_key: glucose.high.urgent
+dedupe_window_min: 60
+requires_clinician_approval: true
+synthetic_demo_only: true

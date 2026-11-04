@@ -1,0 +1,9 @@
+code: SPO2_LOW
+version: 1
+applies_to: spo2
+severity: attention
+condition: {all: [{field: value, op: '<', value: 92}]}
+message_key: spo2.low.attention
+dedupe_window_min: 60
+requires_clinician_approval: true
+synthetic_demo_only: true

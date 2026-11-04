@@ -1,0 +1,13 @@
+[importlinter]
+root_package = app
+
+[importlinter:contract:clinical_rules_isolation]
+name = Clinical rules stay pure and isolated
+type = forbidden
+source_modules =
+    app.clinical_rules
+forbidden_modules =
+    app.ai
+    app.core
+    app.modules
+    app.workers

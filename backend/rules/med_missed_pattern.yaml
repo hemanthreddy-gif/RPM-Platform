@@ -1,0 +1,10 @@
+code: MED_MISSED_PATTERN
+version: 1
+applies_to: medication
+severity: attention
+condition: {}
+message_key: medication.missed.self_reported
+dedupe_window_min: 1440
+requires_clinician_approval: true
+synthetic_demo_only: true
+pattern: {kind: self_reported_missed_dose}

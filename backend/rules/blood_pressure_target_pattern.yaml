@@ -1,0 +1,10 @@
+code: BP_ABOVE_TARGET_PATTERN
+version: 1
+applies_to: blood_pressure
+severity: attention
+condition: {}
+message_key: bp.target_average.attention
+dedupe_window_min: 1440
+requires_clinician_approval: true
+synthetic_demo_only: true
+pattern: {kind: bp_target_average, days: 7, minimum_readings: 4, components: [systolic, diastolic]}

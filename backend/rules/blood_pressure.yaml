@@ -1,0 +1,9 @@
+code: BP_CRISIS
+version: 1
+applies_to: blood_pressure
+severity: urgent
+condition: {any: [{field: systolic, op: '>=', value: 180}, {field: diastolic, op: '>=', value: 120}]}
+message_key: bp.crisis.urgent
+dedupe_window_min: 60
+requires_clinician_approval: true
+synthetic_demo_only: true

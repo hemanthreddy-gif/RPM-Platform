@@ -1,0 +1,9 @@
+code: BP_LOW
+version: 1
+applies_to: blood_pressure
+severity: attention
+condition: {all: [{field: systolic, op: '<', value: 90}]}
+message_key: bp.low.attention
+dedupe_window_min: 60
+requires_clinician_approval: true
+synthetic_demo_only: true

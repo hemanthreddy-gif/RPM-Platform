@@ -1,0 +1,10 @@
+code: GLU_FASTING_PATTERN
+version: 1
+applies_to: glucose
+severity: attention
+condition: {}
+message_key: glucose.fasting_pattern.attention
+dedupe_window_min: 1440
+requires_clinician_approval: true
+synthetic_demo_only: true
+pattern: {kind: fasting_above_target_count, count: 3, sample_size: 5}

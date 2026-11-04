@@ -1,0 +1,17 @@
+.env
+.env.local
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+.coverage
+.coverage.*
+htmlcov/
+node_modules/
+.next/
+playwright-report/
+test-results/
+backups/
+data/synthetic/*.json

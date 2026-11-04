@@ -1,0 +1,90 @@
+[project]
+name = "rpm-platform-backend"
+version = "0.1.0"
+description = "Synthetic-data-only RPM educational prototype backend"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "alembic",
+  "argon2-cffi",
+  "celery",
+  "cryptography",
+  "email-validator",
+  "fastapi",
+  "PyJWT",
+  "PyYAML",
+  "pydantic-settings",
+  "pyotp",
+  "psycopg[binary]",
+  "redis",
+  "sqlalchemy",
+  "structlog",
+  "uvicorn[standard]",
+]
+
+[dependency-groups]
+dev = [
+  "httpx",
+  "hypothesis",
+  "import-linter",
+  "mutmut>=3.8.1",
+  "mypy",
+  "pre-commit",
+  "pytest",
+  "pytest-cov",
+  "ruff",
+  "types-PyYAML",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", ".."]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"migrations/versions/*.py" = ["E501"]
+"app/modules/identity/router.py" = ["E501"]
+"app/modules/identity/service.py" = ["E501"]
+"app/modules/patients/router.py" = ["E501"]
+"app/modules/audit/service.py" = ["E501"]
+"app/modules/observations/router.py" = ["E501"]
+"app/modules/alerts/router.py" = ["E501"]
+"app/modules/alerts/service.py" = ["E501"]
+"app/modules/alerts/notifications.py" = ["E501"]
+"app/modules/medications/service.py" = ["E501"]
+"app/workers/alert_tasks.py" = ["E501"]
+"app/workers/medication_tasks.py" = ["E501"]
+"app/clinical_rules/evaluator.py" = ["E501"]
+"tests/test_clinical_rule_evaluator.py" = ["E501"]
+"tests/test_phase4_postgres_integration.py" = ["E501"]
+"tests/test_phase5_postgres_integration.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app"]
+strict = true
+warn_unused_configs = true
+
+[tool.mutmut]
+source_paths = ["app/clinical_rules", "rules"]
+pytest_add_cli_args_test_selection = [
+  "tests/test_clinical_rule_evaluator.py",
+  "tests/test_clinical_rules_boundary.py",
+]
+
+[[tool.mypy.overrides]]
+module = ["celery"]
+ignore_missing_imports = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
