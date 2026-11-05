@@ -801,3 +801,11 @@ medication behavior.
   PostgreSQL-dependent tests were not established as having run. Updated CI to omit the local
   project from the locked dependency export, use Python 3.12 for pip-audit, and migrate and test
   against the dedicated `rpm_test` service. The updated remote run must be verified separately.
+- Corrected remote CI run `42055119530` for commit `83b930e` passed on GitHub: the backend
+  migrated the disposable PostgreSQL test database and passed 139 tests with 67% overall coverage
+  and one warning; frontend lint, types, 12 Vitest tests and production build passed. Python and
+  JavaScript dependency audits, Gitleaks, public-endpoint Schemathesis and the configured ZAP
+  baseline steps passed. These are the actual results for that commit, not clinical validation or
+  a public-hosting approval. The 80% coverage target, valid mutation score and survivor review,
+  physician onboarding and human feedback remain open. ZAP uses the checked-in baseline scope and
+  options; its successful step is not a security certification.
