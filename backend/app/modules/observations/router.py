@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 from hashlib import sha256
 from json import dumps
+from time import monotonic
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -12,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.clinical_rules.models import Observation as RuleObservation
+from app.core.correlation import current_request_id
 from app.core.database import get_session
 from app.modules.alerts.service import evaluate_and_persist
 from app.modules.audit.service import record
@@ -62,6 +64,7 @@ def create_observation(
     session: Session = Depends(get_session),
 ) -> dict[str, object]:
     """Record manual patient data and the durable Phase 4 orchestration seam atomically."""
+    received_at = monotonic()
     set_database_identity(session, principal)
     patient_id = _patient_id(session, principal.user_id)
     request_hash = sha256(
@@ -126,6 +129,7 @@ def create_observation(
         ),
         evaluation_time=datetime.now(UTC),
     )
+    response["alert_creation_latency_ms"] = round((monotonic() - received_at) * 1000, 3)
     session.execute(
         text("""INSERT INTO idempotency_records (id, actor_or_device_id, operation, key, request_hash, response_status, response_body)
         VALUES (:id, :actor, 'observation.create', :key, :request_hash, 201, CAST(:body AS jsonb))"""),
@@ -144,7 +148,11 @@ def create_observation(
         {
             "id": uuid4(),
             "payload": dumps(
-                {"observation_id": str(observation_id), "patient_id": str(patient_id)}
+                {
+                    "observation_id": str(observation_id),
+                    "patient_id": str(patient_id),
+                    "request_id": current_request_id(),
+                }
             ),
         },
     )

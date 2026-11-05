@@ -7,11 +7,11 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.database import get_session
-from app.modules.alerts.service import transition
+from app.modules.alerts.service import guidance_for, transition
 from app.modules.audit.service import record
 from app.modules.identity.router import require_role
 from app.modules.identity.schemas import Principal
-from app.modules.patients.authorization import require_patient_access
+from app.modules.patients.authorization import require_patient_access, set_database_identity
 
 router = APIRouter(prefix="/api/v1", tags=["alerts"])
 
@@ -32,6 +32,7 @@ def list_alerts(
     session: Session = Depends(get_session),
 ) -> list[dict[str, object]]:
     # RLS filters the query after the request's trusted identity has been set by this access check.
+    set_database_identity(session, principal)
     if principal.role == "patient":
         patient_id = session.execute(
             text("SELECT id FROM patients WHERE user_id = :id"), {"id": principal.user_id}
@@ -40,12 +41,16 @@ def list_alerts(
         patient_id = None
     if patient_id is not None:
         require_patient_access(session, principal, patient_id)
+    query = """SELECT id, patient_id, rule_code, rule_version, severity::text, status::text, created_at
+      FROM alerts"""
+    params: dict[str, UUID] = {}
+    if patient_id is not None:
+        query += " WHERE patient_id = :patient_id"
+        params["patient_id"] = patient_id
+    else:
+        query += " WHERE can_access_patient(patient_id, 'monitoring')"
     rows = (
-        session.execute(
-            text(
-                "SELECT id, patient_id, rule_code, rule_version, severity::text, status::text, created_at FROM alerts ORDER BY created_at DESC LIMIT 100"
-            )
-        )
+        session.execute(text(f"{query} ORDER BY created_at DESC LIMIT 100"), params)
         .mappings()
         .all()
     )
@@ -62,7 +67,7 @@ def list_alerts(
             ip=request.client.host if request.client else None,
         )
     session.commit()
-    return [dict(row) for row in rows]
+    return [{**dict(row), "guidance": guidance_for(row["rule_code"])} for row in rows]
 
 
 def _transition(

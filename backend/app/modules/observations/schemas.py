@@ -30,6 +30,8 @@ class ObservationCreate(BaseModel):
                 )
         elif self.value is None:
             raise ValueError("This observation type requires a positive value")
+        if self.type == "blood_pressure" and self.unit != "mmHg":
+            raise ValueError("Blood pressure unit must be mmHg")
         if self.type == "glucose" and self.unit not in {"mg/dL", "mmol/L"}:
             raise ValueError("Glucose unit must be mg/dL or mmol/L")
         return self
@@ -41,7 +43,7 @@ class ObservationResponse(BaseModel):
     type: str
     value: Decimal | None
     unit: str
-    original_value: Decimal
+    original_value: Decimal | None
     original_unit: str
     components: dict[str, Decimal]
     measured_at: datetime
@@ -50,6 +52,7 @@ class ObservationResponse(BaseModel):
     quality_flag: str | None
     supersedes_id: str | None
     alerts: list[dict[str, object]] = Field(default_factory=list)
+    alert_creation_latency_ms: float | None = None
 
 
 class CorrectionRequest(ObservationCreate):

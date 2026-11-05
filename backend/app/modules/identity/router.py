@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 from secrets import token_urlsafe
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -43,12 +43,22 @@ security = HTTPBearer(auto_error=False)
 
 def current_principal(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    session: Session = Depends(get_session),
 ) -> Principal:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer authentication required"
         )
-    return parse_access_token(credentials.credentials)
+    principal = parse_access_token(credentials.credentials)
+    token_valid_after = session.execute(
+        text("SELECT token_valid_after FROM users WHERE id = :id AND status = 'active'"),
+        {"id": principal.user_id},
+    ).scalar_one_or_none()
+    if token_valid_after is None or principal.issued_at < token_valid_after:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Access token is revoked"
+        )
+    return principal
 
 
 def require_role(*roles: str):
@@ -124,6 +134,7 @@ def provision_privileged(
             detail="Physician registration number required",
         )
     user_id = uuid4()
+    physician_id: UUID | None = None
     try:
         session.execute(
             text(
@@ -137,11 +148,16 @@ def provision_privileged(
             },
         )
         if payload.role == "physician":
+            physician_id = uuid4()
             session.execute(
                 text(
                     "INSERT INTO physicians (id, user_id, registration_no) VALUES (:id, :user_id, :registration_no)"
                 ),
-                {"id": uuid4(), "user_id": user_id, "registration_no": payload.registration_no},
+                {
+                    "id": physician_id,
+                    "user_id": user_id,
+                    "registration_no": payload.registration_no,
+                },
             )
         record(
             session,
@@ -158,7 +174,10 @@ def provision_privileged(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Unable to provision account"
         ) from None
-    return {"id": str(user_id), "role": payload.role}
+    response = {"id": str(user_id), "role": payload.role}
+    if physician_id is not None:
+        response["physician_id"] = str(physician_id)
+    return response
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -234,12 +253,19 @@ def refresh(payload: RefreshRequest, session: Session = Depends(get_session)) ->
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(payload: RefreshRequest, session: Session = Depends(get_session)) -> None:
+def logout(
+    payload: RefreshRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> None:
     session.execute(
         text(
-            "UPDATE identity_tokens SET revoked_at = now() WHERE token_type = 'refresh' AND token_hash = :token_hash AND revoked_at IS NULL"
+            "UPDATE identity_tokens SET revoked_at = now() WHERE user_id = :user_id AND token_type = 'refresh' AND token_hash = :token_hash AND revoked_at IS NULL"
         ),
-        {"token_hash": _hash_token(payload.refresh_token)},
+        {"token_hash": _hash_token(payload.refresh_token), "user_id": principal.user_id},
+    )
+    session.execute(
+        text("UPDATE users SET token_valid_after = now() WHERE id = :id"), {"id": principal.user_id}
     )
     session.commit()
 
@@ -323,7 +349,7 @@ def confirm_password_reset(
         )
     session.execute(
         text(
-            "UPDATE users SET password_hash = :password_hash, failed_login_attempts = 0, locked_until = NULL WHERE id = :id"
+            "UPDATE users SET password_hash = :password_hash, failed_login_attempts = 0, locked_until = NULL, token_valid_after = now() WHERE id = :id"
         ),
         {"id": token["user_id"], "password_hash": hash_password(payload.new_password)},
     )

@@ -14,4 +14,5 @@ node_modules/
 playwright-report/
 test-results/
 backups/
+tools/load/*.json
 data/synthetic/*.json

@@ -1,31 +1,21 @@
-# Initial hazard log
+# Synthetic-demo safety case and hazard log
 
-This early hazard log documents gaps before they are implemented. It does not claim clinical
-validation or regulatory compliance.
+Demo with synthetic data. Not for medical use. This is a risk-management structure inspired by
+medical-software practice, not a claim of standards compliance, clinical validation or clinician
+approval. Clinical fixtures are unreviewed and retain `requires_clinician_approval: true`. Tests
+are engineering evidence with the limitations recorded in the [evaluation report](eval/report.md).
+The project owner owns all residual risks and gaps below.
 
-| Hazard | Cause | Planned control | Evidence / current gap | Residual risk owner |
+| Hazard | Cause | Existing control | Test or documented gap | Residual risk |
 | --- | --- | --- | --- | --- |
-| Unsafe alert | AI or hidden logic makes a decision | Pure deterministic clinical rules only | Import boundary exists; rules not implemented until Phase 4 | Project owner |
-| Missed alert | Rule or delivery failure | Pure evaluator, boundary tests, transactional alert/event/outbox/audit writes, persistent retry and dead-letter state | `backend/tests/test_clinical_rule_evaluator.py`; `backend/tests/test_phase4_postgres_integration.py` | Project owner; fixtures remain unreviewed |
-| Wrong-patient data | Broken authorization | Roles, active relationship, purpose-specific consent, RLS, audit, and restricted worker identity | `test_worker_physician_consent_and_admin_rls` in `backend/tests/test_phase4_postgres_integration.py` | Project owner; local synthetic DB only |
-| Unsafe AI text | Fabricated or injected output | Fake default, schema/fact validation, physician review | AI feature not implemented | Project owner |
-| Incorrect nutrition estimate | Model or dataset error | Code calculation, range, patient confirmation | Data not licensed/supplied | Project owner |
-| Stale data treated as current | Missing timestamp/data-age display | UTC provenance and UI age indicator | Not implemented | Project owner |
+| Misleading meal feedback | A comment is incorrect or mistaken for an automated nutrient estimate | Photo review only; no nutrient estimate is generated, comments are attributed to the physician | [Meal-photo tests](../backend/tests/test_meal_photo_review.py); [authorization tests](../backend/tests/test_phase7_postgres_integration.py); gap: no review of comment quality | Comments may be misunderstood or inaccurate; no clinician review or usability evidence is available. |
+| Missed alert | Incorrect rule or lost transaction | Isolated deterministic rules, boundary tests, atomic alert/outbox | [Rule tests](../backend/tests/test_clinical_rule_evaluator.py); [transaction tests](../backend/tests/test_phase4_postgres_integration.py) | Fixtures are synthetic and unreviewed; no valid mutation score or clinical sensitivity evidence. |
+| Delayed notification | Worker, Redis or delivery outage | Persistent outbox, retry and dead-letter state | [Delivery tests](../backend/tests/test_phase4_postgres_integration.py); [Phase 10 evidence](plans/phase-10.md) | Delivery may be delayed; synthetic evaluator timing is not notification latency. |
+| Unsafe AI text | Fabrication or injected instructions | Typed facts and validation; deterministic patient rendering and fallback | [Grounded and adversarial tests](../backend/tests/test_phase8_grounded_insights.py) | Lexical checks cannot guarantee semantic safety; provider draft requires review. |
+| Wrong-patient data | Authorization or relationship failure | Purpose-specific consent, relationships, RLS and audit | [Access integration tests](../backend/tests/test_phase4_postgres_integration.py) | Local synthetic tests cannot establish absence of all access defects. |
+| Stale data shown as current | Missing or misunderstood timestamps | Source timestamps and data-age UI | Gap: no dedicated data-age display regression test or independent usability validation | Users may misunderstand age; human usability testing is pending. |
+| Device misreads | Incorrect payload, provenance or duplicate upload | Device authentication, validation and shared observation path | [Device integration tests](../backend/tests/test_phase9_postgres_integration.py); gap: no real device accuracy evaluation | Simulator does not establish hardware accuracy or clinical performance. |
 
-## Phase 4 verification record
-
-- Clinical-rules unit and boundary tests pass locally, including explicit fasting-glucose and
-  blood-pressure target-pattern edge cases. The package remains free of application, database,
-  clock, worker, and AI imports.
-- Mutation testing was attempted on 2026-11-04 with locked mutmut 3.8.1 in a disposable Linux
-  container. The 26 clinical-rules tests passed, but mutmut reported `0 files mutated, 0 ignored,
-  4 unmodified` and stopped because it found no test case for a generated mutant. No mutation
-  score or survivor claim is made; the runner's source-copy isolation needs investigation before
-  this can count as mutation evidence. Native Windows mutmut remains unsupported.
-- PostgreSQL integration tests are opt-in and require `DATABASE_URL` ending in `/rpm_test`.
-  The test module covers atomic trigger/outbox/audit writes, lifecycle transitions, retry and
-  dead-letter state, 30-minute escalation, worker/physician/admin access, correction history,
-  and concurrent idempotency. After applying migration `0005_alert_delivery_integrity`, all 7
-  integration tests passed against the disposable local database.
-- Phase 4 fixtures remain synthetic, unreviewed, and gated by `requires_clinician_approval: true`;
-  no clinical validation or clinician approval is claimed.
+Release-gate exceptions, unresolved coverage, mutation testing and Turbopack debt are carried in
+[progress](PROGRESS.md) and [security exceptions](security-exceptions.md). Human usability and
+clinical/faculty review are pending; do not infer approval from this document.

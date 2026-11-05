@@ -1,1 +1,1 @@
-"""Messaging module placeholder for Phase 9."""
+"""Consent-scoped, non-emergency communication module."""

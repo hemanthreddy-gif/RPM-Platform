@@ -1,5 +1,6 @@
 """The sole writer for append-only audit records."""
 
+from ipaddress import ip_address
 from uuid import UUID
 
 from sqlalchemy import text
@@ -18,10 +19,16 @@ def record(
     ip: str | None = None,
 ) -> None:
     """Append a minimal audit event in the caller's transaction."""
+    try:
+        audit_ip = str(ip_address(ip)) if ip is not None else None
+    except ValueError:
+        audit_ip = None
     session.execute(
         text("""
-            INSERT INTO audit_log (actor_id, actor_role, action, resource_type, resource_id, patient_id, ip)
-            VALUES (:actor_id, CAST(:actor_role AS user_role), :action, :resource_type, :resource_id, :patient_id, :ip)
+            SELECT record_audit_event(
+              :actor_id, CAST(:actor_role AS user_role), :action, :resource_type,
+              :resource_id, :patient_id, CAST(:ip AS inet)
+            )
         """),
         {
             "actor_id": actor_id,
@@ -30,6 +37,6 @@ def record(
             "resource_type": resource_type,
             "resource_id": resource_id,
             "patient_id": patient_id,
-            "ip": ip,
+            "ip": audit_ip,
         },
     )

@@ -1,0 +1,4 @@
+import { AppShell } from "../../../../../components/app-shell";
+import { PhysicianPatientDetail } from "../../../../../components/physician-patient-detail";
+import { PhysicianMealReview } from "../../../../../components/physician-meal-review";
+export default async function PatientDetail({ params }: { params: Promise<{ id: string }> }) { const { id } = await params; return <AppShell role="physician"><h1 className="text-2xl font-bold">Patient detail</h1><nav aria-label="Patient sections" className="flex flex-wrap gap-2"><a className="nav-link" href="#overview">Overview</a><a className="nav-link" href="#monitoring">Monitoring</a><a className="nav-link" href="#medications">Medications</a><a className="nav-link" href="#alerts">Alerts</a><a className="nav-link" href="#meal-photos">Meal photos</a></nav><PhysicianPatientDetail patientId={id} /><PhysicianMealReview patientId={id} /></AppShell>; }

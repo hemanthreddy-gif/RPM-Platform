@@ -23,7 +23,9 @@ def _set_worker_identity(session: object) -> None:
     session.execute(text("SELECT set_config('app.role', 'worker', true)"))  # type: ignore[attr-defined]
 
 
-@celery_app.task(name="alerts.dispatch_outbox")
+@celery_app.task(
+    name="alerts.dispatch_outbox", autoretry_for=(Exception,), retry_backoff=True, max_retries=3
+)
 def dispatch_outbox() -> int:
     """Deliver pending alert outbox rows at-least-once with persistent retry state."""
     with SessionLocal() as session:
@@ -38,7 +40,12 @@ def dispatch_outbox() -> int:
     return delivered
 
 
-@celery_app.task(name="alerts.escalate_unacknowledged")
+@celery_app.task(
+    name="alerts.escalate_unacknowledged",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3,
+)
 def escalate_unacknowledged() -> int:
     """Escalate synthetic urgent alerts after the reviewed-fixture timeline (30 minutes)."""
     with SessionLocal() as session:
@@ -87,7 +94,9 @@ def escalate_due(session: Session, *, now: datetime) -> int:
     return len(rows)
 
 
-@celery_app.task(name="alerts.check_no_data")
+@celery_app.task(
+    name="alerts.check_no_data", autoretry_for=(Exception,), retry_backoff=True, max_retries=3
+)
 def check_no_data() -> int:
     """Schedule synthetic-demo no-data notices using the configured explicit intervals."""
     settings = get_settings()
@@ -157,7 +166,12 @@ def check_no_data() -> int:
     return created
 
 
-@celery_app.task(name="alerts.check_target_patterns")
+@celery_app.task(
+    name="alerts.check_target_patterns",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3,
+)
 def check_target_patterns() -> int:
     """Evaluate only explicit physician targets and immutable observation facts."""
     settings = get_settings()

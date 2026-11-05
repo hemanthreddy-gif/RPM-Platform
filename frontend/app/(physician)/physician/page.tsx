@@ -1,3 +1,4 @@
-export default function PhysicianPlaceholder() {
-  return <main><h1>Physician area</h1><p>Physician workflows are introduced in Phase 6.</p></main>;
-}
+import Link from "next/link";
+import { AppShell } from "../../../components/app-shell";
+import { PhysicianWorklist } from "../../../components/physician-worklist";
+export default function PhysicianHome() { return <AppShell role="physician"><div className="physician-heading"><div><p className="workspace-kicker">CLINICIAN WORKSPACE</p><h1>Physician overview</h1><p>A focused view of the people and information in your care workspace.</p></div><Link className="physician-action" href="/physician/directory">Open patient directory <span>↗</span></Link></div><div className="physician-intro"><div><span>✳</span><div><strong>Your patient workspace</strong><p>Review authorized records, recent readings and active alerts from your worklist.</p></div></div><Link href="/physician/directory">View directory ↗</Link></div><div className="physician-worklist"><div className="workspace-section-head"><div><p className="workspace-kicker">YOUR WORKLIST</p><h2>Patients & activity</h2><p>Search your patient list and open a record to review its details.</p></div></div><PhysicianWorklist /></div></AppShell>; }

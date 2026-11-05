@@ -42,3 +42,31 @@ jobs:
       - run: npm --prefix frontend run typecheck
       - run: npm --prefix frontend run test:run
       - run: npm --prefix frontend run build
+
+  security-scans:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Audit locked Python dependencies
+        run: uv export --project backend --locked --no-dev --format requirements-txt | uvx pip-audit --requirement /dev/stdin
+      - name: Audit production JavaScript dependencies
+        run: npm --prefix frontend audit --omit=dev --audit-level=high
+      - name: Scan committed secrets
+        uses: gitleaks/gitleaks-action@v2
+      - name: Start an unauthenticated scan target
+        run: |
+          uv sync --project backend --locked --all-extras
+          uv run --project backend uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          for attempt in {1..20}; do curl --fail http://127.0.0.1:8000/health && break; sleep 1; done
+      - name: Fuzz public OpenAPI endpoints
+        run: uvx --from schemathesis schemathesis run http://127.0.0.1:8000/openapi.json --include-path=/health --include-path=/api/v1/ping
+      - name: Run OWASP ZAP baseline against public endpoints
+        run: docker run --rm --network=host -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://127.0.0.1:8000/health -I

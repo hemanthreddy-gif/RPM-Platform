@@ -1,1 +1,1 @@
-"""Device module placeholder for Phase 9."""
+"""Synthetic paired-device boundary with token-scoped ingestion."""

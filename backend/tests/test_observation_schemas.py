@@ -42,3 +42,21 @@ def test_blood_pressure_requires_positive_components() -> None:
 def test_target_requires_an_ordered_range() -> None:
     with pytest.raises(ValidationError, match="less than"):
         TargetRequest(type="glucose", low=Decimal("100"), high=Decimal("100"))
+
+
+def test_blood_pressure_uses_component_values_and_mmhg() -> None:
+    payload = ObservationCreate(
+        type="blood_pressure",
+        unit="mmHg",
+        components={"systolic": 120, "diastolic": 80},
+        measured_at=datetime.now(UTC),
+    )
+    assert payload.value is None
+    assert canonical_value(payload) == (None, "mmHg")
+    with pytest.raises(ValidationError, match="mmHg"):
+        ObservationCreate(
+            type="blood_pressure",
+            unit="bpm",
+            components=payload.components,
+            measured_at=datetime.now(UTC),
+        )

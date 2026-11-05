@@ -1,1 +1,1 @@
-"""FHIR module placeholder for Phase 9."""
+"""Read-only, explicitly limited FHIR R4 JSON subset."""

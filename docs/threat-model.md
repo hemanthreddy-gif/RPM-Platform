@@ -1,16 +1,40 @@
-# Lightweight Phase 0 threat model
+# Phase 10 threat model — synthetic educational demo
 
-This is an early design checklist, not a security certification. It uses STRIDE to identify where
-later phases need controls and tests.
+This is a living engineering threat model, not a certification, privacy assessment, clinical
+validation, or claim of regulatory compliance. It covers only synthetic data. Clinical decisions
+remain in the deterministic `clinical_rules` package; AI, messaging, devices, and scanners do not
+create clinical approval or human monitoring.
 
-| Area | Main risk | Planned control | Evidence status |
-| --- | --- | --- | --- |
-| API identity | Someone impersonates a user | Password, MFA, token and role controls in Phase 2 | Pending |
-| Patient data | A user reads another person's information | Relationship, consent, query filters and PostgreSQL RLS in Phase 2 | Pending |
-| Observation intake | A request is replayed or altered | Scoped idempotency and provenance in Phase 3 | Pending |
-| Alert path | An unsafe or nondeterministic decision | Pure rules package and import contract; rule tests in Phase 4 | Boundary in place; logic pending |
-| AI path | Prompt injection or unsupported content | Fake default, no tool access, strict schemas and fact validation in Phases 7–8 | Pending |
-| Images | Malicious or overly revealing upload | Private storage, type/size validation and re-encoding in Phase 7 | Pending |
-| Background work | Accepted work is lost after a failure | Transactional outbox and persistent retries in Phases 3–4 | Pending |
+## Data-flow boundary
 
-Never treat an unimplemented future control as current protection.
+```text
+Browser or paired device -> FastAPI auth/validation/authorization -> PostgreSQL transaction
+  (observation, deterministic alert, audit, idempotency, outbox) -> Celery/Redis -> in-app delivery
+Meal image -> validation/re-encode -> private S3-compatible object store -> authorised review
+Verified facts -> optional AI provider -> validation/template fallback
+FHIR export -> relationship/consent checks -> audited R4-subset JSON
+```
+
+## STRIDE analysis and evidence
+
+| Flow / STRIDE threat | Control | Evidence / test |
+| --- | --- | --- |
+| Auth: spoofed credentials or account enumeration | Argon2id, generic login/reset failure, lockout, auth rate limit, MFA for privileged roles | `test_identity_security.py`; Phase 10 rate-limiter test |
+| Auth: replayed or stolen refresh/access token | Rotating hashed refresh tokens, refresh revocation, JWT expiry, `token_valid_after` invalidation after reset/logout | identity service/router; migration `0012_phase10_security`; focused identity regression suite |
+| API: tampered/cross-patient request | JWT role checks, relationship/consent checks, transaction-local RLS, typed request schemas | Phase 2–9 PostgreSQL access tests; import contract |
+| Ingestion: duplicate, flood, or repudiated reading | Actor/device-scoped idempotency, immutable observations, audit in same transaction, rate limits | Phase 3/9 idempotency acceptance tests; Phase 10 limiter test |
+| Device: spoofed paired device | Hash-only pairing token scoped to URL device, device source/provenance, no patient-data read capability | `test_phase9_interop.py`; device PostgreSQL acceptance tests |
+| Alerts: altered/nondeterministic decision | Pure deterministic evaluator, isolated imports, atomic alert/event/outbox persistence | clinical boundary tests; Phase 4 atomicity suite |
+| Worker: lost/replayed delivery or Redis outage | PostgreSQL outbox, idempotent delivery, retry/dead-letter state, late acknowledgements, `/ready` visible Redis status | Phase 4 failure/dead-letter tests; Phase 10 retry configuration and readiness test |
+| Object storage: malicious upload or disclosure | JPEG/PNG allow-list, byte/pixel limits, Pillow verify/re-encode strips metadata, private bucket, authorised read, opaque 503 | `test_meal_photo_review.py` |
+| AI: injected input or unsafe/fabricated prose | Fake by default, no tools/DB, facts-only packet, validator, deterministic patient template fallback | Phase 8 red-team/validator tests |
+| Export: disclosure or misleading FHIR output | Relationship/consent/audit checks; restricted R4 subset; uncoded glucose omitted rather than guessed | Phase 9 FHIR HTTP/integration tests |
+| API/UI: browser injection, framing, data cache | Explicit CORS allow-list, strict API CSP, no-frame/nosniff/referrer/permission headers, `no-store` | `test_phase10_hardening.py`; ZAP baseline in CI |
+| Supply chain/secrets | Locked dependencies, pip-audit, npm audit, Gitleaks in CI | `.github/workflows/ci.yml`; see dated scan exception until remote CI evidence exists |
+| Availability: database/broker/storage/provider failure hidden from operators | Liveness separate from `/ready`; visible object-store error; provider/template fallback; durable alert path independent of Redis | `/ready` Phase 10 regression; meal storage and writer fallback tests |
+
+## Open exceptions
+
+The owned impacts, compensating controls, and expiry dates are in
+[`security-exceptions.md`](security-exceptions.md). Expired or unexplained exceptions cannot pass
+a public-demo release gate.

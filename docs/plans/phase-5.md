@@ -37,3 +37,17 @@ These remain explicit follow-up work and are not represented as resolved by Phas
   not generated medication advice.  AI is not involved.
 - `MED_MISSED_PATTERN` responds only to an actual self-reported missed event and carries the
   existing synthetic-demo and `requires_clinician_approval` gates; it defines no threshold.
+
+## Functional acceptance evidence (2026-11-04)
+
+- Migration `0006_medication_adherence` was reviewed by rendering the SQL, then applied only to
+  the disposable local synthetic `rpm` and `rpm_test` databases. Both report migration head.
+- The five Phase 5 PostgreSQL tests pass against `rpm_test`: Asia/Kolkata UTC+05:30 conversion,
+  idempotent dose generation, a mid-window schedule change, overdue-to-unknown behavior, and
+  patient create/edit denial. Additional integration coverage verifies physician-authored version
+  provenance, a patient self-report with a concern flag, the synthetic missed-report rule path,
+  self-reported adherence, and sent/expired reminder delivery evidence.
+- Full backend verification against `rpm_test` passed with 55 tests. The required 80% repository
+  coverage gate remains open at 65%; `clinical_rules` is 96%. Mutmut still has no valid score.
+  Therefore functional Phase 5 acceptance is complete, but the repository-wide quality gate is
+  not complete and remains tracked follow-up work.

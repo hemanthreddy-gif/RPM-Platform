@@ -59,3 +59,4 @@ class Principal(BaseModel):
     role: str
     mfa: bool
     expires_at: datetime
+    issued_at: datetime

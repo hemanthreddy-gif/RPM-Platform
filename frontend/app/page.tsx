@@ -1,25 +1,22 @@
-import { fetchBackendHealth } from "../lib/api/health";
+import Link from "next/link";
 
-export default async function HomePage() {
-  let detail = "Backend health is not available yet.";
+const features = [
+  { n: "01", title: "A clearer daily picture", text: "Record synthetic glucose and blood pressure readings, and revisit them in one place.", icon: "↗" },
+  { n: "02", title: "A more connected review", text: "Share meal photos and see comments from an authorized physician in the demo.", icon: "✳" },
+  { n: "03", title: "Context, not guesswork", text: "Explore source-linked summaries, timestamps and the history behind each reading.", icon: "◷" },
+];
 
-  try {
-    const health = await fetchBackendHealth();
-    detail = `Backend status: ${health.status}. AI provider: ${health.ai_provider}.`;
-  } catch {
-    // The page must still explain its state if the developer has not started the API.
-  }
+export default function HomePage() {
+  return <main className="landing" id="top">
+    <div className="demo-strip"><span className="demo-dot" /> Demo with synthetic data. Not for medical use.</div>
 
-  return (
-    <main className="mx-auto max-w-2xl p-8">
-      <p className="rounded bg-amber-100 p-3 text-sm font-semibold text-amber-950">
-        Demo with synthetic data. Not for medical use.
-      </p>
-      <h1 className="mt-8 text-3xl font-bold">RPM Platform</h1>
-      <p className="mt-3 text-slate-700">Educational research prototype foundation.</p>
-      <p className="mt-6 rounded border border-slate-300 bg-white p-4" role="status">
-        {detail}
-      </p>
-    </main>
-  );
+    <header className="landing-nav wrap"><Link className="brand" href="/"><span className="brand-mark">✳</span><span>rpm<span className="brand-light"> / platform</span></span></Link><nav aria-label="Main navigation"><a href="#about">The platform</a><a href="#how-it-works">How it works</a><a href="#access">Get started</a></nav><Link href="/login" className="nav-cta">Sign in <span aria-hidden="true">↗</span></Link></header>
+    <section className="hero wrap" id="about"><div className="hero-copy"><p className="eyebrow"><span /> A MORE CONNECTED VIEW OF CARE</p><h1>Better context.<br/><em>Better conversations.</em></h1><p className="hero-intro">A thoughtful space to explore everyday health data, share context, and bring patient and physician perspectives together.</p><div className="hero-actions"><Link href="/register" className="button-dark">Explore as a patient <span>↗</span></Link><Link href="/login?role=physician" className="button-text">Physician sign in <span>↗</span></Link></div><div className="hero-note"><span className="note-icon">✳</span><p><strong>Made for learning, designed with care.</strong><br/>An educational prototype for diabetes and hypertension monitoring.</p></div></div>
+      <div className="hero-art" aria-label="Illustration of a synthetic monitoring dashboard"><div className="art-orbit orbit-one"/><div className="art-orbit orbit-two"/><div className="floating-label"><span>✳</span> YOUR DATA, IN CONTEXT</div><div className="preview-card"><div className="preview-head"><div><p className="preview-kicker">ILLUSTRATIVE PREVIEW</p><h2>Your overview</h2></div><span className="preview-avatar">S</span></div><div className="preview-greeting">A little more clarity,<br/><strong>one day at a time.</strong></div><div className="preview-row"><span className="preview-icon">↗</span><div><strong>Reading history</strong><small>Review your recorded data</small></div><span>↗</span></div><div className="preview-row"><span className="preview-icon mint">✳</span><div><strong>Meal photos</strong><small>Share more of the picture</small></div><span>↗</span></div><div className="preview-line"><span>RECENT ACTIVITY</span><span>EXAMPLE ONLY</span></div><div className="mini-chart" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></div><div className="floating-card"><span className="float-icon">✓</span><span><strong>Designed for context</strong><small>Synthetic data only</small></span></div><div className="art-caption">A SMALLER DISTANCE BETWEEN CHECK-INS <span>↗</span></div></div>
+    </section>
+    <section className="intro-band"><div className="wrap intro-band-inner"><p className="eyebrow light">THE IDEA BEHIND RPM</p><p>Health information is more useful when it comes with <em>context.</em> This demo brings everyday records and review together in a calm, understandable space.</p><a href="#how-it-works">Discover the platform <span>↘</span></a></div></section>
+    <section className="features wrap" id="how-it-works"><div className="section-top"><div><p className="eyebrow"><span/> WHAT YOU CAN EXPLORE</p><h2>Everything in its<br/><em>right place.</em></h2></div><p>From a quick reading to a thoughtful review, see how the pieces fit together.</p></div><div className="feature-grid">{features.map((feature) => <article className="feature" key={feature.n}><div className="feature-top"><span>{feature.n} / 03</span><span className="feature-icon">{feature.icon}</span></div><h3>{feature.title}</h3><p>{feature.text}</p></article>)}</div></section>
+    <section className="access wrap" id="access"><div><p className="eyebrow"><span/> FIND YOUR WAY IN</p><h2>One platform.<br/><em>Two perspectives.</em></h2><p>Choose the experience that fits your role in this synthetic demo.</p></div><div className="access-cards"><article><span className="access-symbol">♡</span><h3>For patients</h3><p>Keep your readings and meal photos together, and explore your history.</p><Link href="/register">Create patient account <span>↗</span></Link><Link href="/login?role=patient">Patient sign in <span>↗</span></Link></article><article><span className="access-symbol">✳</span><h3>For physicians</h3><p>Review authorized synthetic records and add context through comments.</p><Link href="/login?role=physician">Physician sign in <span>↗</span></Link><Link href="/physician-access">Create physician account <span>↗</span></Link></article></div></section>
+    <footer className="landing-footer"><div className="wrap footer-inner"><Link className="brand footer-brand" href="/"><span className="brand-mark">✳</span><span>rpm<span className="brand-light"> / platform</span></span></Link><p>Demo with synthetic data. Not for medical use.<br/>Not an emergency service. No clinical validation is claimed.</p><a href="#top" aria-label="Back to top">↑</a></div></footer>
+  </main>;
 }

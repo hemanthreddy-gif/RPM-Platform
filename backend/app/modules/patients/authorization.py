@@ -35,6 +35,23 @@ def require_patient_access(
             status_code=status.HTTP_403_FORBIDDEN, detail="Administrators cannot read clinical data"
         )
     set_database_identity(session, principal)
+    if principal.role == "patient":
+        # Reassert the identity-scoped patient setting in this request transaction before
+        # relying on RLS.  The equality check is explicit defense in depth for all routes.
+        own_patient_id = session.execute(
+            text("SELECT id FROM patients WHERE user_id = :user_id"),
+            {"user_id": principal.user_id},
+        ).scalar_one_or_none()
+        if own_patient_id != patient_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No active relationship and consent for this patient",
+            )
+        session.execute(
+            text("SELECT set_config('app.patient_id', :patient_id, true)"),
+            {"patient_id": str(patient_id)},
+        )
+        return
     allowed = session.execute(
         text("SELECT can_access_patient(:patient_id, :purpose)"),
         {"patient_id": patient_id, "purpose": purpose},

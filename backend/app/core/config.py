@@ -28,6 +28,25 @@ class Settings(BaseSettings):
     synthetic_demo_no_data_bp_days: int = 7
     notification_max_attempts: int = 3
     medication_reminder_late_window_minutes: int = 30
+    meal_photo_max_bytes: int = 8 * 1024 * 1024
+    meal_photo_max_pixels: int = 16_000_000
+    s3_endpoint_url: str = "http://localhost:9000"
+    s3_access_key_id: str = "rpm-local-development-only"
+    s3_secret_access_key: str = "development-only-change-me"
+    s3_bucket: str = "rpm-dev"
+    cors_allowed_origins: str = "http://localhost:3000"
+    auth_rate_limit_per_minute: int = 10
+    ingestion_rate_limit_per_minute: int = 60
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Parse an explicit browser-origin allow-list; wildcards are not supported."""
+        origins = [
+            origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()
+        ]
+        if not origins or "*" in origins:
+            raise ValueError("CORS_ALLOWED_ORIGINS must be a non-empty explicit allow-list")
+        return origins
 
 
 @lru_cache

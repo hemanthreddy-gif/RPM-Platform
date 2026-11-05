@@ -1,0 +1,3 @@
+"use client";
+import { AppShell } from "../../../../components/app-shell"; import { useState } from "react";
+export default function MedicationsPage() { const [message, setMessage] = useState(""); return <AppShell role="patient"><h1 className="text-2xl font-bold">Medications</h1><section className="card"><p className="muted">Dose status is your self-report. The app does not change medication instructions.</p><div className="flex flex-wrap gap-3">{(["taken", "missed", "skipped"] as const).map((status) => <button key={status} className="touch-button" onClick={() => setMessage(`A ${status} report requires the scheduled dose from your secure medication list.`)}>{status[0].toUpperCase() + status.slice(1)}</button>)}</div><p role="status">{message}</p></section></AppShell>; }

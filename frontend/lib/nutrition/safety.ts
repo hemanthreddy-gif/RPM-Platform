@@ -1,0 +1,1 @@
+export const MEAL_PHOTO_REVIEW_NOTICE = "Meal photos are shown for optional physician review only. They are not analysed for nutrition, allergies, ingredients, or medical suitability, and comments are not medical advice.";

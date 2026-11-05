@@ -12,6 +12,7 @@ from app.clinical_rules.evaluator import evaluate
 from app.clinical_rules.loader import load_rules
 from app.clinical_rules.models import AlertDecision, Observation, PatientContext
 from app.core.config import get_settings
+from app.core.correlation import current_request_id
 
 _RULES = load_rules(Path(__file__).parents[3] / "rules")
 _MESSAGES = {
@@ -29,6 +30,28 @@ _MESSAGES = {
         "Synthetic-demo notice of a self-reported missed dose. This is not medication advice."
     ),
 }
+_MESSAGE_KEYS_BY_RULE_CODE = {
+    "GLU_LOW_L2": "glucose.low.urgent",
+    "GLU_HIGH_URGENT": "glucose.high.urgent",
+    "BP_CRISIS": "bp.crisis.urgent",
+    "BP_LOW": "bp.low.attention",
+    "GLU_LOW_L1": "glucose.low.attention",
+    "SPO2_LOW": "spo2.low.attention",
+    "SPO2_CRITICAL": "spo2.low.urgent",
+    "GLU_FASTING_PATTERN": "glucose.fasting_pattern.attention",
+    "BP_TARGET_AVERAGE": "bp.target_average.attention",
+    "NO_DATA_GLUCOSE": "no_data.informational",
+    "NO_DATA_BLOOD_PRESSURE": "no_data.informational",
+    "MED_MISSED_PATTERN": "medication.missed.self_reported",
+}
+
+
+def guidance_for(rule_code: str) -> str:
+    """Return only the fixture's stored synthetic-demo wording for an alert code."""
+    return _MESSAGES.get(
+        _MESSAGE_KEYS_BY_RULE_CODE.get(rule_code, ""),
+        "Synthetic-demo alert. This is not clinical guidance.",
+    )
 
 
 def evaluate_and_persist(
@@ -120,7 +143,13 @@ def persist_decisions(
                   VALUES (:id, 'AlertNotificationRequested', CAST(:payload AS jsonb))"""),
                 {
                     "id": uuid4(),
-                    "payload": dumps({"alert_id": str(alert_id), "patient_id": str(patient_id)}),
+                    "payload": dumps(
+                        {
+                            "alert_id": str(alert_id),
+                            "patient_id": str(patient_id),
+                            "request_id": current_request_id(),
+                        }
+                    ),
                 },
             )
         alerts.append(
@@ -128,9 +157,7 @@ def persist_decisions(
                 "id": str(alert_id),
                 "rule_code": decision.rule_code,
                 "severity": decision.severity,
-                "guidance": _MESSAGES.get(
-                    decision.message_key, "Synthetic-demo alert. This is not clinical guidance."
-                ),
+                "guidance": guidance_for(decision.rule_code),
                 "deduplicated": event_type != "triggered",
             }
         )

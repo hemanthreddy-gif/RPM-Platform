@@ -5,8 +5,13 @@ from datetime import datetime, timedelta
 from json import loads
 from uuid import UUID
 
+import structlog
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+from app.core.correlation import set_request_id
+
+logger = structlog.get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -57,6 +62,9 @@ def dispatch_pending(
         payload = event["payload_ref"]
         if isinstance(payload, str):
             payload = loads(payload)
+        request_id = payload.get("request_id")
+        if isinstance(request_id, str):
+            set_request_id(request_id)
         alert_id = UUID(str(payload["alert_id"]))
         already_sent = session.execute(
             text(
@@ -101,6 +109,18 @@ def dispatch_pending(
                     next_retry_at = NULL, dead_lettered_at = NULL, last_error = NULL"""),
                 {"event_id": event["id"], "attempts": attempt},
             )
+            latency = session.execute(
+                text("""SELECT EXTRACT(EPOCH FROM (:now - o.recorded_at)) AS seconds
+                  FROM alerts a JOIN observations o ON o.id = a.observation_id
+                  WHERE a.id = :alert_id"""),
+                {"now": now, "alert_id": alert_id},
+            ).scalar_one_or_none()
+            if latency is not None:
+                logger.info(
+                    "metric.notification_observation_to_sent_seconds",
+                    value=float(latency),
+                    channel=adapter.channel,
+                )
             delivered += 1
             continue
         terminal = attempt >= max_attempts

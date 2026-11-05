@@ -263,7 +263,12 @@ def dispatch_medication_reminders(
     return delivered
 
 
-@celery_app.task(name="medications.generate_scheduled_doses")
+@celery_app.task(
+    name="medications.generate_scheduled_doses",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3,
+)
 def generate_scheduled_doses_task() -> int:
     with SessionLocal() as session:
         _set_worker_identity(session)
@@ -272,7 +277,12 @@ def generate_scheduled_doses_task() -> int:
         return generated
 
 
-@celery_app.task(name="medications.dispatch_reminders")
+@celery_app.task(
+    name="medications.dispatch_reminders",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3,
+)
 def dispatch_medication_reminders_task() -> int:
     settings = get_settings()
     with SessionLocal() as session:
@@ -288,7 +298,12 @@ def dispatch_medication_reminders_task() -> int:
         return delivered
 
 
-@celery_app.task(name="medications.mark_overdue_unknown")
+@celery_app.task(
+    name="medications.mark_overdue_unknown",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3,
+)
 def mark_overdue_unknown_task() -> int:
     settings = get_settings()
     with SessionLocal() as session:

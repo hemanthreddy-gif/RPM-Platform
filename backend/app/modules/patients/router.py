@@ -28,6 +28,17 @@ class AssignmentRequest(BaseModel):
     consent_id: UUID
 
 
+class WorklistItem(BaseModel):
+    """A deliberately small, authorized physician worklist projection."""
+
+    id: UUID
+    display_name: str
+    timezone: str
+    has_hypertension: bool
+    active_alert_severity: str | None
+    latest_observation_at: datetime | None
+
+
 @router.get("/patients/me")
 def get_me(
     request: Request,
@@ -97,6 +108,69 @@ def get_patient(
     )
     session.commit()
     return dict(row)
+
+
+@router.get("/physician/patients", response_model=list[WorklistItem])
+def physician_worklist(
+    request: Request,
+    query: str = "",
+    principal: Principal = Depends(require_role("physician")),
+    session: Session = Depends(get_session),
+) -> list[dict[str, object]]:
+    """List only patients with an active monitoring relationship and consent.
+
+    The query is intentionally a display-only projection.  It does not infer a clinical
+    priority: the server returns the persisted alert severity and the latest accepted data time.
+    RLS still applies to ``patients`` and each returned record is re-authorized and audited.
+    """
+    set_database_identity(session, principal)
+    needle = query.strip()
+    if len(needle) > 100:
+        raise HTTPException(status_code=422, detail="Search query is too long")
+    rows = (
+        session.execute(
+            text(
+                """SELECT p.id, p.display_name, p.timezone, p.has_hypertension,
+                  (SELECT a.severity::text FROM alerts a
+                    WHERE a.patient_id = p.id
+                      AND a.status IN ('open', 'notified', 'escalated')
+                    ORDER BY CASE a.severity WHEN 'urgent' THEN 3 WHEN 'attention' THEN 2 ELSE 1 END DESC,
+                             a.created_at DESC LIMIT 1) AS active_alert_severity,
+                  (SELECT max(o.measured_at) FROM observations o WHERE o.patient_id = p.id) AS latest_observation_at
+                  FROM patients p
+                  JOIN care_relationships r ON r.patient_id = p.id AND r.status = 'active' AND r.ended_at IS NULL
+                  JOIN physicians ph ON ph.id = r.physician_id AND ph.user_id = :user_id
+                  JOIN consents c ON c.id = r.consent_id AND c.patient_id = p.id
+                    AND c.purpose = 'monitoring' AND c.revoked_at IS NULL
+                  WHERE (:query = '' OR p.display_name ILIKE :pattern)
+                  ORDER BY CASE (SELECT a.severity::text FROM alerts a
+                    WHERE a.patient_id = p.id AND a.status IN ('open', 'notified', 'escalated')
+                    ORDER BY CASE a.severity WHEN 'urgent' THEN 3 WHEN 'attention' THEN 2 ELSE 1 END DESC,
+                             a.created_at DESC LIMIT 1)
+                    WHEN 'urgent' THEN 3 WHEN 'attention' THEN 2 WHEN 'informational' THEN 1 ELSE 0 END DESC,
+                  latest_observation_at ASC NULLS FIRST, p.display_name ASC LIMIT 100"""
+            ),
+            {"user_id": principal.user_id, "query": needle, "pattern": f"%{needle}%"},
+        )
+        .mappings()
+        .all()
+    )
+    response: list[dict[str, object]] = []
+    for row in rows:
+        require_patient_access(session, principal, row["id"])
+        record(
+            session,
+            actor_id=principal.user_id,
+            actor_role=principal.role,
+            action="patient.worklist.read",
+            resource_type="patient",
+            resource_id=row["id"],
+            patient_id=row["id"],
+            ip=request.client.host if request.client else None,
+        )
+        response.append(dict(row))
+    session.commit()
+    return response
 
 
 @router.get("/consents")

@@ -318,3 +318,31 @@ def test_concurrent_idempotency_key_has_one_winner(integration_connection: Conne
     )
     engine.dispose()
     assert sorted(outcomes) == [False, True]
+
+
+def test_component_only_blood_pressure_keeps_original_values(
+    integration_connection: Connection,
+) -> None:
+    _worker(integration_connection)
+    _, patient_id = _patient(integration_connection)
+    row = (
+        integration_connection.execute(
+            text("""INSERT INTO observations
+          (id, patient_id, type, value_num, components, unit, original_value, original_unit,
+           measured_at, source, context)
+          VALUES (:id, :patient_id, 'blood_pressure', NULL,
+            CAST(:components AS jsonb), 'mmHg', NULL, 'mmHg', :now, 'manual', '{}')
+          RETURNING original_value, original_unit, components"""),
+            {
+                "id": uuid4(),
+                "patient_id": patient_id,
+                "now": datetime.now(UTC),
+                "components": '{"systolic":120,"diastolic":80}',
+            },
+        )
+        .mappings()
+        .one()
+    )
+    assert row["original_value"] is None
+    assert row["original_unit"] == "mmHg"
+    assert row["components"] == {"systolic": 120, "diastolic": 80}

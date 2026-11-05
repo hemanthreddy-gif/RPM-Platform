@@ -1,13 +1,15 @@
-import { describe, expect, it } from "vitest";
-
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fetchBackendHealth } from "../lib/api/health";
 
-describe("backend health client", () => {
-  it("requests the backend health endpoint", async () => {
-    const originalFetch = global.fetch;
-    global.fetch = async () => new Response(JSON.stringify({ status: "ok", ai_provider: "fake" }), { status: 200 });
+describe("server health endpoint", () => {
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
+  it("uses the internal address for server-side health while keeping the public URL separate", async () => {
+    vi.stubEnv("BACKEND_INTERNAL_URL", "http://backend:8000");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:8000");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ status: "ok", ai_provider: "fake" }) });
+    vi.stubGlobal("fetch", fetchMock);
     await expect(fetchBackendHealth()).resolves.toEqual({ status: "ok", ai_provider: "fake" });
-    global.fetch = originalFetch;
+    expect(fetchMock).toHaveBeenCalledWith("http://backend:8000/health", { cache: "no-store" });
   });
 });

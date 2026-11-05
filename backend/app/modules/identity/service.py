@@ -78,6 +78,7 @@ def parse_access_token(token: str) -> Principal:
             role=payload["role"],
             mfa=bool(payload["mfa"]),
             expires_at=datetime.fromtimestamp(payload["exp"], UTC),
+            issued_at=datetime.fromtimestamp(payload["iat"], UTC),
         )
     except (jwt.PyJWTError, KeyError, ValueError) as exc:
         raise HTTPException(

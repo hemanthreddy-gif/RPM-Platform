@@ -3,8 +3,8 @@
 ## Status and purpose
 
 This is the working architecture record for a local, synthetic-data-only educational prototype.
-Phase 0 implements only the API/frontend foundation and local service configuration; it does not
-implement patient data, clinical workflows, or clinical validation.
+The repository implements synthetic patient and physician workflows through Phase 11. Human
+evaluation and release-gate work remain open; no clinical validation is claimed.
 
 ## Planned shape
 
@@ -33,7 +33,7 @@ Implemented foundation components are a Next.js/TypeScript frontend with a backe
 FastAPI/Python `/health` and `/api/v1/ping` endpoints, a fake AI provider placeholder, and Docker
 Compose configuration for PostgreSQL 16, Redis, Celery, SeaweedFS (S3-compatible local object
 storage), MailHog, backend, and frontend.
-The database remains empty: its schema and all patient-data flows start in later phases.
+The schema, synthetic records, authorization and audit paths are implemented; see [progress](PROGRESS.md) for verification and gaps.
 
 ## Non-negotiable boundaries
 
@@ -51,14 +51,26 @@ The database remains empty: its schema and all patient-data flows start in later
 
 1. A patient or device submits a reading. The API authenticates, validates, and authorizes it;
    the rules engine receives explicit history and evaluation time; all durable records commit
-   together. Urgent approved guidance is returned synchronously, while durable outbox workers
+   together. Synthetic-demo urgent guidance is returned synchronously, while durable outbox workers
    perform later delivery/retry work.
-2. A meal image is validated and stored privately. An optional provider estimates only food items
-   and gram ranges. Code matches approved food data and calculates nutrient ranges; the patient
-   confirms or corrects the result.
+2. A meal image is validated and stored privately. An authorized physician can add a comment.
+   This selected workflow does not recognize foods, estimate portions or calculate nutrients.
 3. Analytics make a typed facts packet from stored sources. An optional provider can draft
    physician-only prose; validation checks its claim references. Patient-visible facts are
    deterministically rendered, and provider failure falls back to templates.
+
+Phase 8 currently implements this flow only for authorized observation and explicit
+self-reported-dose sources. The facts packet records source identifiers, time window, sample size,
+units, and insufficient-data state. It makes no meal/nutrition inference in the selected workflow. Patient text is a deterministic source-linked template; no provider
+text is patient-visible. Real provider-backed physician prose and asynchronous publication remain
+deferred pending a selected provider and a later bounded slice.
+
+Phase 9 adds a device-token boundary that authenticates a paired device before server-side code
+enters a trusted worker database context solely to reuse the existing observation/alert transaction.
+Tokens are stored as hashes and are scoped to one device; they do not grant patient-data reads.
+Messaging is a separate consent-gated, audited, non-emergency path and cannot create clinical
+alerts. The FHIR interface is read-only, explicitly limited to a synthetically mapped R4 subset,
+and omits glucose records without recorded specimen/coding provenance rather than guessing codes.
 
 ## Planned module boundaries
 
@@ -72,12 +84,10 @@ The database remains empty: its schema and all patient-data flows start in later
 ## Known gaps and decisions still needed
 
 - No clinician has approved thresholds, message text, or demo-rule activation. Do not imply one.
-- No food dataset has been licensed or supplied; this blocks real nutrition calculations.
+- The chosen meal-photo review workflow has no food recognition or nutrition calculations.
 - No provider/model is selected because the fake provider is sufficient for development and tests.
-- Specific compatible dependency and container versions will be verified and recorded in a Phase
-  0 dependency-version ADR, not guessed now.
-- Security/reliability controls become deeper in later phases; early foundations must still enforce
-  permissions, auditability, idempotency, and rule isolation.
+- Public-demo isolation, reset safeguards, deployment, release-gate verification, usability testing
+  and clinician/faculty feedback remain open. See [progress](PROGRESS.md).
 
 ## ADR status
 
@@ -88,3 +98,5 @@ The database remains empty: its schema and all patient-data flows start in later
 - [ADR 005](adr/005-oidc-migration-path.md): replace local prototype identity before non-demo use.
 - [ADR 006](adr/006-medication-provenance-and-self-report.md): preserve physician-authored
   medication versions and distinguish schedules from patient self-reports.
+
+- [ADR 007](adr/007-demo-deployment-boundary.md): separate image candidates from public deployment.

@@ -6,6 +6,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
   "alembic",
   "argon2-cffi",
+  "boto3",
   "celery",
   "cryptography",
   "email-validator",
@@ -13,6 +14,8 @@ dependencies = [
   "PyJWT",
   "PyYAML",
   "pydantic-settings",
+  "Pillow",
+  "packaging==26.3",
   "pyotp",
   "psycopg[binary]",
   "redis",
@@ -60,10 +63,16 @@ select = ["E", "F", "I", "UP"]
 "app/modules/medications/service.py" = ["E501"]
 "app/workers/alert_tasks.py" = ["E501"]
 "app/workers/medication_tasks.py" = ["E501"]
+"app/modules/insights/service.py" = ["E501"]
+"app/modules/devices/router.py" = ["E501"]
+"app/modules/devices/service.py" = ["E501"]
+"app/modules/messaging/router.py" = ["E501"]
+"app/modules/fhir/router.py" = ["E501"]
 "app/clinical_rules/evaluator.py" = ["E501"]
 "tests/test_clinical_rule_evaluator.py" = ["E501"]
 "tests/test_phase4_postgres_integration.py" = ["E501"]
 "tests/test_phase5_postgres_integration.py" = ["E501"]
+"tests/test_phase9_postgres_integration.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
