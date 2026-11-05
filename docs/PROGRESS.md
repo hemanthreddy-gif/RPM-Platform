@@ -809,3 +809,17 @@ medication behavior.
   a public-hosting approval. The 80% coverage target, valid mutation score and survivor review,
   physician onboarding and human feedback remain open. ZAP uses the checked-in baseline scope and
   options; its successful step is not a security certification.
+
+## Cross-tool handoff (2026-11-05)
+
+- Added `docs/PROJECT_HANDOFF.md` and `docs/AI_INSTRUCTIONS.md` for future contributors and AI
+  coding tools. They summarize implemented slices, owner decisions, limitations, exact recorded
+  evidence, prioritized remaining work, safe setup, commands and a copyable physician-onboarding
+  task prompt. The 60% remaining figure is recorded as the owner's impression, not a measured
+  project-completion metric. The later GitHub Actions run `42055557504` for `5d034b4` passed all
+  three jobs, with 139 backend tests and 67% overall coverage; this does not imply clinical or
+  public-hosting readiness. No external human review or physician approval was invented.
+- Verification for these documentation changes: a local Markdown-link existence check across
+  `README.md`, `docs/PROJECT_HANDOFF.md`, and `docs/AI_INSTRUCTIONS.md` passed; `git diff --check`
+  passed. No application code changed and no new application test run is claimed. The pre-existing
+  `frontend/tsconfig.tsbuildinfo` modification was preserved and excluded from the handoff commit.

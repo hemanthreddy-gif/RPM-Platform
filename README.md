@@ -76,6 +76,11 @@ Methods, denominators and limitations are in the [evaluation report](docs/eval/r
 check results and remaining release-gate, coverage, mutmut and frontend-build debt. Screenshots or
 video have not yet been recorded.
 
+## Project handoff
+
+See the [project handoff](docs/PROJECT_HANDOFF.md) for completed and remaining work, and the
+[AI coding assistant manual](docs/AI_INSTRUCTIONS.md) for continuing in another tool.
+
 ## Next steps
 
 Run the [human evaluation protocol](docs/eval/human-protocol.md), close the public-demo safety and

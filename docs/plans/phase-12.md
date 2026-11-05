@@ -79,3 +79,10 @@ artifacts, preserve all existing work and document any scan limitations. Update 
 and documentation without suggesting a public clinical deployment or completed human review.
 Create and push only after the review and relevant checks; do not force-push or overwrite an
 existing remote. Verify the resulting public repository and report actual CI status.
+
+## Continuation — cross-tool project handoff
+
+Create a factual project handoff and a tool-neutral AI contributor manual using the current source,
+latest verification evidence and user decisions. Distinguish completed implementations from gaps,
+known stale historical entries and human-only review. Preserve all safety constraints. Verify local
+links and the final diff, update progress, and do not push without an instruction for this change.
