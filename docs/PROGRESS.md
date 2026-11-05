@@ -793,3 +793,11 @@ medication behavior.
 - The public repository `hemanthreddy-gif/RPM-Platform` was created for the user-requested
   publication. At the time of this entry it was empty; the reviewed push and remote CI still had
   to be verified. Its existence is not a clinical deployment or release approval.
+- The first remote CI run for commit `7f342fc` was observed at
+  `https://github.com/hemanthreddy-gif/RPM-Platform/actions/runs/42054589113`: backend and
+  frontend jobs passed, but security scans failed at the Python dependency audit because its
+  requirements export included the editable local project with hashes. The subsequent security
+  scan, fuzz and ZAP steps were skipped. The backend job had not set `DATABASE_URL`, so its
+  PostgreSQL-dependent tests were not established as having run. Updated CI to omit the local
+  project from the locked dependency export, use Python 3.12 for pip-audit, and migrate and test
+  against the dedicated `rpm_test` service. The updated remote run must be verified separately.
