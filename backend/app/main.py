@@ -2,6 +2,7 @@
 
 from collections.abc import Awaitable, Callable
 from hashlib import sha256
+from secrets import compare_digest
 from uuid import UUID, uuid4
 
 import redis
@@ -35,7 +36,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=[
         "Authorization",
         "Content-Type",
@@ -66,6 +67,9 @@ _RATE_LIMITED_ROUTES = {
     "/api/v1/auth/password-reset": "auth",
     "/api/v1/auth/password-reset/confirm": "auth",
     "/api/v1/auth/provision": "auth",
+    "/api/v1/auth/physician-invitations": "auth",
+    "/api/v1/auth/physician-onboarding/start": "auth",
+    "/api/v1/auth/physician-onboarding/complete": "auth",
     "/api/v1/observations": "ingestion",
 }
 
@@ -124,6 +128,32 @@ async def request_id_middleware(
         )
     except ValueError:
         request_id = str(uuid4())
+    path = request.url.path.rstrip("/")
+    if (
+        settings.hosted_demo
+        and path != "/health"
+        and not compare_digest(
+            request.headers.get("X-Demo-Gateway-Key", "").encode(),
+            settings.backend_gateway_secret.encode(),
+        )
+    ):
+        return apply_api_response_protections(
+            JSONResponse(status_code=403, content={"detail": "Private preview access required"}),
+            request_id,
+        )
+    if settings.hosted_demo and (
+        path in {"/api/v1/auth/provision", "/api/v1/auth/physician-invitations", "/api/v1/admin"}
+        or path.startswith("/api/v1/admin/")
+    ):
+        # This boundary precedes authentication and all router/database work. Operators
+        # provision isolated synthetic identities through the private one-off service path.
+        return apply_api_response_protections(
+            JSONResponse(
+                status_code=403,
+                content={"detail": "Administrative provisioning is disabled in hosted previews"},
+            ),
+            request_id,
+        )
     scope = _RATE_LIMITED_ROUTES.get(request.url.path)
     if request.url.path.startswith("/api/v1/devices/") and request.url.path.endswith("/readings"):
         scope = "ingestion"

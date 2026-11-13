@@ -1,2 +1,3 @@
 import { AppShell } from "../../../../components/app-shell"; import { ObservationForm } from "../../../../components/observation-form";
-export default function LogPage() { return <AppShell role="patient"><h1 className="text-2xl font-bold">Log a reading</h1><ObservationForm /></AppShell>; }
+import { PageHeading } from "../../../../components/page-heading";
+export default function LogPage() { return <AppShell role="patient"><PageHeading eyebrow="YOUR DAILY CHECK-IN" title="Readings & sleep" description="Record what you measured and how long you slept. Leave any unneeded fields empty." /><ObservationForm /><p className="history-chart-note">Sleep is a self-reported duration. It does not generate a health score, target or clinical alert.</p></AppShell>; }

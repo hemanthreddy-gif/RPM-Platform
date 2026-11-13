@@ -6,6 +6,14 @@ This is the working architecture record for a local, synthetic-data-only educati
 The repository implements synthetic patient and physician workflows through Phase 11. Human
 evaluation and release-gate work remain open; no clinical validation is claimed.
 
+The Phase 13 local experience slice adds responsive patient and physician workspaces, private
+editable profiles/photos, self-reported sleep, invitation/MFA physician onboarding and explicit
+patient-controlled monitoring connections. See [ADR 008](adr/008-profiles-invitations-and-connections.md).
+Sleep records reuse the observation transaction but do not enter the clinical evaluator. Small
+profile photos are normalized and stored in the protected patient row; meal images remain in S3.
+Conversation reads/writes additionally require the exact participant and that thread's active
+relationship/consent, enforced by a dedicated database function and application authorization.
+
 ## Planned shape
 
 The project will be a modular monolith:

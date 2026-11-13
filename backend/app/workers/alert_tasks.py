@@ -195,6 +195,7 @@ def check_target_patterns() -> int:
             history_rows = session.execute(
                 text("""SELECT type::text, value_num, components, context, measured_at
               FROM observations o WHERE patient_id = :patient_id
+              AND type IN ('glucose', 'blood_pressure', 'heart_rate', 'spo2')
               AND NOT EXISTS (SELECT 1 FROM observations child WHERE child.supersedes_id = o.id)
               AND measured_at >= :cutoff ORDER BY measured_at DESC"""),
                 {"patient_id": patient_id, "cutoff": now - timedelta(days=7)},

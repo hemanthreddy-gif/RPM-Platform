@@ -62,10 +62,10 @@ Read AGENTS.md, docs/PROJECT_HANDOFF.md, the latest entries of docs/PROGRESS.md,
 docs/architecture.md, the relevant build-guide sections and applicable ADRs. Inspect Git status
 and preserve existing changes. We are building a polished synthetic-data-only demonstration.
 
-Implement the physician onboarding slice described as P0 in docs/PROJECT_HANDOFF.md. Plan first
-under docs/plans/phase-12.md. Preserve trusted physician provisioning and MFA; public registration
-must create patients only. Design the first-time MFA bootstrap, authorization, audit, expiry,
-replay protection, recovery and patient-relationship/consent boundary before implementation.
+Inspect the completed Phase 13 onboarding/redesign slice and the latest recorded checks first.
+Implement only the next bounded item the owner requests from docs/PROJECT_HANDOFF.md. Plan first
+under docs/plans/. Preserve trusted physician invitations and MFA, patient-only public
+registration, private profiles/photos, immutable sleep records and patient-controlled consent.
 Do not forge tokens, hard-code credentials, bypass MFA, use real patient data, remove safety
 notices, or invent clinician approval. Use the existing locked dependencies where possible.
 

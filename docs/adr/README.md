@@ -9,3 +9,4 @@ These decisions describe a synthetic educational prototype, not a clinical or de
 5. [OIDC migration before non-demo use](005-oidc-migration-path.md)
 6. [Medication provenance and self-report](006-medication-provenance-and-self-report.md)
 7. [Separate image candidates from public deployment](007-demo-deployment-boundary.md)
+8. [Private profiles, invited physicians and patient-controlled connections](008-profiles-invitations-and-connections.md)

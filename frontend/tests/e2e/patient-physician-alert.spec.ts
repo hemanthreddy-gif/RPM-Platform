@@ -68,7 +68,7 @@ test("synthetic patient alert is acknowledged by an authorized physician", async
   await page.waitForTimeout(Math.max(0, 61_000 - (Date.now() - authWindowStart)));
   await page.getByRole("button", { name: "Log out" }).click(); await page.getByLabel("Email").fill(`synthetic.physician.${suffix}@example.com`); await page.getByLabel("Password", { exact: true }).fill(password); await page.getByRole("button", { name: "Physician", exact: false }).click(); await page.getByLabel("MFA code (if required)").fill(totp(physicianSecret)); await page.waitForTimeout(100); await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Physician overview" })).toBeVisible(); await expect(page.getByText("urgent", { exact: false })).toBeVisible();
-  await page.getByRole("link", { name: `Synthetic Patient ${suffix}` }).click(); await page.getByRole("button", { name: "Acknowledge alert" }).click(); await expect(page.getByRole("status")).toContainText("acknowledged");
+  await page.getByRole("link", { name: `Synthetic Patient ${suffix}`, exact: true }).click(); await page.getByRole("button", { name: "Acknowledge alert" }).click(); await expect(page.getByRole("status")).toContainText("acknowledged");
   await expect(page.getByRole("heading", { name: "Meal-photo review" })).toBeVisible();
   await page.getByLabel("Add a non-clinical comment").fill("Synthetic optional review comment.");
   await page.getByRole("button", { name: "Add comment" }).click();

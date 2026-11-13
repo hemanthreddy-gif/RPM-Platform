@@ -1,4 +1,4 @@
-# Build-only candidate for a synthetic demo; not approved for public deployment.
+# Restricted hosted synthetic preview. Runtime secrets are supplied by the host.
 FROM node:24-alpine AS dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -8,9 +8,9 @@ FROM node:24-alpine AS build
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
-ARG NEXT_PUBLIC_API_BASE_URL
+ARG NEXT_PUBLIC_API_BASE_URL=""
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
-RUN test -n "$NEXT_PUBLIC_API_BASE_URL" && npm run build
+RUN npm run build
 
 FROM node:24-alpine AS runtime
 WORKDIR /app

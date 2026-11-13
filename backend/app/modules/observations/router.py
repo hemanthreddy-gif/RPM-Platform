@@ -116,19 +116,22 @@ def create_observation(
         .one()
     )
     response = _response(row)
-    response["alerts"] = evaluate_and_persist(
-        session,
-        patient_id=patient_id,
-        observation_id=observation_id,
-        observation=RuleObservation(
-            type=payload.type,
-            value=value,
-            components=payload.components,
-            context=payload.context,
-            measured_at=payload.measured_at,
-        ),
-        evaluation_time=datetime.now(UTC),
-    )
+    response["alerts"] = []
+    # Sleep is self-reported context with no clinical evaluator or approved alert rules.
+    if payload.type != "sleep":
+        response["alerts"] = evaluate_and_persist(
+            session,
+            patient_id=patient_id,
+            observation_id=observation_id,
+            observation=RuleObservation(
+                type=payload.type,
+                value=value,
+                components=payload.components,
+                context=payload.context,
+                measured_at=payload.measured_at,
+            ),
+            evaluation_time=datetime.now(UTC),
+        )
     response["alert_creation_latency_ms"] = round((monotonic() - received_at) * 1000, 3)
     session.execute(
         text("""INSERT INTO idempotency_records (id, actor_or_device_id, operation, key, request_hash, response_status, response_body)
@@ -269,7 +272,13 @@ def list_observations(
     session: Session = Depends(get_session),
 ) -> list[dict[str, object]]:
     require_patient_access(session, principal, patient_id)
-    if type is not None and type not in {"glucose", "blood_pressure", "heart_rate", "spo2"}:
+    if type is not None and type not in {
+        "glucose",
+        "blood_pressure",
+        "heart_rate",
+        "spo2",
+        "sleep",
+    }:
         raise HTTPException(status_code=422, detail="Unsupported observation type")
     if (from_ is not None and from_.tzinfo is None) or (to is not None and to.tzinfo is None):
         raise HTTPException(status_code=422, detail="Date filters must include a UTC offset")

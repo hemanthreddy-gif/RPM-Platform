@@ -12,12 +12,25 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import get_session
 from app.modules.audit.service import record
+from app.modules.identity.onboarding import (
+    authorize_invitation_manager,
+    complete_onboarding,
+    create_invitation,
+    read_physician_profile,
+    start_onboarding,
+)
 from app.modules.identity.schemas import (
     LoginRequest,
     MfaEnrollResponse,
     MfaVerifyRequest,
     PasswordResetConfirm,
     PasswordResetRequest,
+    PhysicianEnrollmentResponse,
+    PhysicianInvitationRequest,
+    PhysicianInvitationResponse,
+    PhysicianOnboardingComplete,
+    PhysicianOnboardingStart,
+    PhysicianProfile,
     Principal,
     ProvisionRequest,
     RefreshRequest,
@@ -72,6 +85,47 @@ def require_role(*roles: str):
         return principal
 
     return dependency
+
+
+@router.get("/physician-profile", response_model=PhysicianProfile)
+def physician_profile(
+    principal: Principal = Depends(require_role("physician")),
+    session: Session = Depends(get_session),
+) -> dict[str, object]:
+    return read_physician_profile(session, principal)
+
+
+@router.post("/physician-invitations", response_model=PhysicianInvitationResponse, status_code=201)
+def invite_physician(
+    payload: PhysicianInvitationRequest,
+    request: Request,
+    x_provisioning_key: str | None = Header(default=None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    session: Session = Depends(get_session),
+) -> PhysicianInvitationResponse:
+    principal = current_principal(credentials, session) if credentials is not None else None
+    authorize_invitation_manager(x_provisioning_key, principal)
+    return create_invitation(
+        session, payload, principal, request.client.host if request.client else None
+    )
+
+
+@router.post("/physician-onboarding/start", response_model=PhysicianEnrollmentResponse)
+def begin_physician_setup(
+    payload: PhysicianOnboardingStart,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> PhysicianEnrollmentResponse:
+    return start_onboarding(session, payload, request.client.host if request.client else None)
+
+
+@router.post("/physician-onboarding/complete", response_model=TokenResponse, status_code=201)
+def finish_physician_setup(
+    payload: PhysicianOnboardingComplete,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> TokenResponse:
+    return complete_onboarding(session, payload, request.client.host if request.client else None)
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -151,12 +205,14 @@ def provision_privileged(
             physician_id = uuid4()
             session.execute(
                 text(
-                    "INSERT INTO physicians (id, user_id, registration_no) VALUES (:id, :user_id, :registration_no)"
+                    "INSERT INTO physicians (id, user_id, registration_no, display_name, specialty) VALUES (:id, :user_id, :registration_no, :display_name, :specialty)"
                 ),
                 {
                     "id": physician_id,
                     "user_id": user_id,
                     "registration_no": payload.registration_no,
+                    "display_name": payload.display_name,
+                    "specialty": payload.specialty,
                 },
             )
         record(

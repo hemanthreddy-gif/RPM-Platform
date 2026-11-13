@@ -1,3 +1,6 @@
 import { AppShell } from "../../../../components/app-shell";
 import { Phase9Settings } from "../../../../components/phase9-settings";
-export default function SettingsPage() { return <AppShell role="patient"><h1 className="text-2xl font-bold">Settings and privacy</h1><section className="card"><h2 className="text-xl font-semibold">Privacy notice</h2><p className="muted">This synthetic educational demo is not for medical use. Consent and profile controls are securely served by the API.</p></section><Phase9Settings /></AppShell>; }
+import { PageHeading } from "../../../../components/page-heading";
+import { Icon } from "../../../../components/icon";
+import Link from "next/link";
+export default function SettingsPage() { return <AppShell role="patient"><PageHeading eyebrow="YOUR PREFERENCES & CONNECTIONS" title="Settings & devices" description="Manage your profile, sharing permissions and synthetic device connections." /><div className="settings-links"><Link className="card" href="/patient/profile"><Icon name="user" size={25} /><div><h2>Personal profile</h2><p>Your photo, personal details and body measurements.</p></div><Icon name="arrow" /></Link><Link className="card" href="/patient/care-team"><Icon name="shield" size={25} /><div><h2>Consent & care team</h2><p>Choose your physicians and control their access.</p></div><Icon name="arrow" /></Link></div><Phase9Settings /></AppShell>; }

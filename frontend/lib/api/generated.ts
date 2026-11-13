@@ -1,5 +1,5 @@
-/* Generated from the backend OpenAPI contract by `npm run api:generate`. Do not hand-edit types. */
-export type ObservationType = "glucose" | "blood_pressure" | "heart_rate" | "spo2";
+/* Typed frontend DTOs aligned with backend schemas. api:generate refreshes the OpenAPI snapshot. */
+export type ObservationType = "glucose" | "blood_pressure" | "heart_rate" | "spo2" | "sleep";
 export type ObservationCreate = {
   type: ObservationType;
   value?: number;
@@ -10,8 +10,16 @@ export type ObservationCreate = {
   confirm_unusual?: boolean;
 };
 export type Alert = { id: string; patient_id: string; rule_code: string; severity: string; status: string; created_at: string; guidance: string };
-export type PatientProfile = { id: string; display_name: string; timezone: string; has_hypertension: boolean };
-export type PhysicianWorklistItem = PatientProfile & { active_alert_severity: string | null; latest_observation_at: string | null };
+export type PatientProfile = {
+  id: string; display_name: string; timezone: string; has_hypertension: boolean;
+  date_of_birth?: string | null; age?: number | null; gender?: string | null; phone?: string | null;
+  height_cm?: number | null; weight_kg?: number | null; has_profile_picture?: boolean;
+  profile_picture_updated_at?: string | null;
+};
+export type ProfileUpdate = Pick<PatientProfile, "display_name" | "date_of_birth" | "gender" | "phone" | "height_cm" | "weight_kg" | "timezone" | "has_hypertension">;
+export type Physician = { id: string; display_name: string; specialty: string | null };
+export type PatientConnection = { id: string; physician_id: string; display_name: string; specialty: string | null; consent_id: string; started_at: string; active: boolean };
+export type PhysicianWorklistItem = Pick<PatientProfile, "id" | "display_name" | "timezone" | "has_hypertension"> & { active_alert_severity: string | null; latest_observation_at: string | null };
 export type Observation = { id: string; patient_id: string; type: ObservationType; value: number | null; unit: string; components: Record<string, number>; measured_at: string; recorded_at: string; source: string; quality_flag: string | null };
 export type Medication = {
   id: string; name: string; dose: string | null; frequency: string; schedule_times: string[];

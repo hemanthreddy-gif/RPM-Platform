@@ -1,4 +1,4 @@
-# Build-only candidate for a synthetic demo; not approved for public deployment.
+# Non-root image for the restricted synthetic preview; no open-public release claim.
 FROM python:3.12-slim AS dependencies
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 WORKDIR /app
@@ -15,6 +15,7 @@ COPY --chown=rpm:rpm app ./app
 COPY --chown=rpm:rpm rules ./rules
 COPY --chown=rpm:rpm migrations ./migrations
 COPY --chown=rpm:rpm alembic.ini ./alembic.ini
+COPY --chown=rpm:rpm ops ./ops
 USER rpm
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

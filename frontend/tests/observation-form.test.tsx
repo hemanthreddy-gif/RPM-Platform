@@ -13,6 +13,7 @@ describe("synthetic observation form", () => {
     expect(screen.getByLabelText("Diastolic")).toBeTruthy();
     expect(screen.getByLabelText("Heart rate")).toBeTruthy();
     expect(screen.getByLabelText("Oxygen saturation")).toBeTruthy();
+    expect(screen.getByLabelText("Sleep duration")).toBeTruthy();
     expect(screen.queryByLabelText("Reading type")).toBeNull();
   });
   it("saves all entered parameters and reports individual outcomes", async () => {
@@ -40,5 +41,18 @@ describe("synthetic observation form", () => {
     await waitFor(() => expect(send).toHaveBeenCalledOnce());
     expect(send.mock.calls[0][0]).toMatchObject({ type: "blood_pressure", unit: "mmHg", components: { systolic: 120, diastolic: 80 }, context: {} });
     expect((await screen.findByRole("status")).textContent).toContain("Synthetic guidance");
+  });
+  it("records zero hours of self-reported sleep and rejects more than 24 hours", async () => {
+    setSession({ accessToken: "test", refreshToken: "test", role: "patient", userId: "synthetic", expiresAt: Date.now() + 60_000 });
+    const send = vi.spyOn(api, "createObservation").mockResolvedValue({ alerts: [] });
+    render(<ObservationForm />);
+    fireEvent.change(screen.getByLabelText("Sleep duration"), { target: { value: "25" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save readings" }));
+    expect(send).not.toHaveBeenCalled();
+    expect(screen.getByRole("status").textContent).toContain("between 0 and 24 hours");
+    fireEvent.change(screen.getByLabelText("Sleep duration"), { target: { value: "0" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save readings" }));
+    await waitFor(() => expect(send).toHaveBeenCalledOnce());
+    expect(send.mock.calls[0][0]).toMatchObject({ type: "sleep", value: 0, unit: "h", context: { period: "previous_24_hours", self_reported: true } });
   });
 });

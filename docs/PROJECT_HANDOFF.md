@@ -25,10 +25,16 @@ blueprint may be unavailable; do not reconstruct or invent it.
 
 ## What exists
 
+2026-11-06 update: the Phase 13 local redesign implements the earlier physician-onboarding P0
+slice with trusted invitations and MFA, patient profiles/private photos, sleep records and
+patient-controlled monitoring connections. Migrations now reach `0016_conversation_participants`.
+See the latest [progress entry](PROGRESS.md) and [ADR 008](adr/008-profiles-invitations-and-connections.md)
+for current verification and limits; the earlier remote CI evidence below is historical.
+
 | Area | Implemented slice | Important limits |
 | --- | --- | --- |
-| Foundation and data | FastAPI/Python backend, Next.js frontend, PostgreSQL, Redis/Celery, SeaweedFS local object storage, Compose, migrations through `0013_bp_components`, deterministic synthetic seed tooling. | Local development stack; use disposable synthetic databases only. Container candidates and operational readiness are not a production deployment. |
-| Identity and access | Patient-only public registration; trusted physician/admin provisioning; hashed passwords, access/refresh tokens, MFA, relationship and purpose-specific consent checks, audit and database restrictions. | **Physician onboarding is incomplete:** provisioning does not offer a complete safe first-time MFA bootstrap. A physician cannot simply self-register; do not bypass MFA or create a public privileged signup. |
+| Foundation and data | FastAPI/Python backend, Next.js frontend, PostgreSQL, Redis/Celery, SeaweedFS local object storage, Compose, migrations through `0016_conversation_participants`, deterministic synthetic seed tooling. | Local development stack; use disposable synthetic databases only. Container candidates and operational readiness are not a production deployment. |
+| Identity and access | Patient-only public registration; trusted physician invitations with expiring MFA bootstrap; hashed passwords/tokens, relationship and purpose-specific consent, audit and database restrictions. | Physician setup requires a trusted invitation. No medical registration is verified. Public privileged signup remains prohibited; OIDC migration is required before non-demo use. |
 | Observations and alerts | Typed glucose, BP, pulse and oxygen observations; original units and times, immutable corrections, scoped idempotency, transactional observation/alert/audit/outbox writes and deterministic rules. Synthetic rule fixtures and escalation/delivery workers exist. | Rules and wording are unreviewed, demo-only and gated; `requires_clinician_approval` stays true. No diagnosis, prescription or real-time care is provided. |
 | Medication | Physician-authored versions/schedules, generated dose events, reminders and explicitly patient self-reported adherence. | Missing reports are pending/unknown, not inferred missed; no medication advice. |
 | Patient and physician UI | Responsive landing/sign-in, patient registration, distinct workspaces, reading cards, physician worklist and patient detail. One Save action submits filled measurements individually and displays each result; offline retry retains per-observation idempotency. | The multiple reading submissions are **not one atomic batch**. Some UI and accessibility work remains; an end-to-end demo needs safely provisioned synthetic physician credentials and relationships. |
@@ -51,7 +57,7 @@ blueprint may be unavailable; do not reconstruct or invent it.
 
 ### P0 — make the local demo complete and safe to operate
 
-1. **Physician onboarding and access.** Design a trusted, auditable provisioning and first-time MFA enrollment flow; specify actor, secret handling, expiry, replay prevention and recovery. Implement it through the owning identity module, not a public role selector. Add permission, token, MFA, failure and negative tests; run a real end-to-end scenario with a synthetic physician, active relationship and monitoring consent. Provide clear local setup instructions without committing credentials.
+1. **Physician onboarding and access.** Implemented locally in Phase 13: invitation, password, MFA verification, activation and patient consent connection. Operators can reissue an incomplete/expired invitation. Future work includes managed OIDC, established-account recovery, and production credential verification; these are not implemented or approved.
 2. **Reliable patient and physician journeys.** Review registration, sign-in, reading entry, partial failure, duplicate retries, timestamps/data age, meal-photo comments, alerts, navigation and role switching on mobile and desktop. Retain a single Save action with explicit per-reading results and per-record idempotency. Do not silently drop accepted or queued work. Test keyboard navigation, loading/empty/error states and data authorization; avoid fabricated dashboard metrics.
 3. **UI/UX polish.** Improve both workspaces consistently while preserving their distinct patient and physician purposes. Verify actual links, flows, text contrast, responsive behavior and screen-reader labels. Keep the required synthetic-data and non-emergency disclosures. The previous attempt to remove them was rejected by automatic approval review.
 
@@ -79,8 +85,7 @@ blueprint may be unavailable; do not reconstruct or invent it.
 
 ## Immediate next assignment
 
-Start with **P0 physician onboarding** after reading the identity code, migrations, tests and ADR
-005. First write a short plan covering trusted provisioning, first-time MFA, authorization, audit,
-expiration/replay, failure recovery and synthetic-only scope. Then implement and test an authorized
-vertical slice; do not infer the owner's physician identity or invent clinical approval. See the
-companion manual for a ready-to-paste prompt and the commands to run.
+The local onboarding/redesign slice is implemented; read the latest PROGRESS entry before choosing
+further work. The next safe engineering slice is the existing coverage and mutation-testing debt,
+followed by human usability review if requested. Do not infer authorization to deploy, publish or
+add clinical features from this handoff. Preserve uncommitted work and the synthetic-only boundary.

@@ -9,8 +9,9 @@ export function MealPhotoPreview({ mealId, token }: { mealId: string; token: str
   useEffect(() => {
     let active = true; let objectUrl = "";
     void api.mealImage(mealId, token).then((blob) => {
+      if (!active) return;
       objectUrl = URL.createObjectURL(blob);
-      if (active) setUrl(objectUrl);
+      setUrl(objectUrl);
     }).catch(() => { if (active) setError("The private meal photo could not be loaded."); });
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [mealId, token]);

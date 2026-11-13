@@ -1,43 +1,51 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api/client";
 import type { Alert, Medication, Observation, PatientProfile } from "../lib/api/generated";
 import { getSession } from "../lib/auth/session";
-
-function age(value?: string): string {
-  if (!value) return "No accepted reading yet";
-  const minutes = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 60_000));
-  return minutes < 60 ? `${minutes} minutes ago` : `${Math.floor(minutes / 60)} hours ago`;
-}
+import { Icon } from "./icon";
 
 export function PatientLiveSummary() {
-  const [profile, setProfile] = useState<PatientProfile>(); const [readings, setReadings] = useState<Observation[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]); const [medications, setMedications] = useState<Medication[]>([]); const [error, setError] = useState("");
+  const [profile, setProfile] = useState<PatientProfile>();
+  const [readings, setReadings] = useState<Observation[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [medications, setMedications] = useState<Medication[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
-    const session = getSession(); if (!session) return;
-    void api.me(session.accessToken).then(async (me) => {
-      setProfile(me);
-      const [nextReadings, nextAlerts, nextMedication] = await Promise.all([
-        api.observations(me.id, session.accessToken), api.alerts(session.accessToken), api.medications(me.id, session.accessToken),
-      ]);
-      setReadings(nextReadings); setAlerts(nextAlerts); setMedications(nextMedication);
-    }).catch(() => setError("Live synthetic-demo data could not be refreshed. Check your connection and sign in again."));
+    let cancelled = false;
+    const refresh = () => {
+      const session = getSession(); if (!session) return;
+      setLoading(true);
+      void api.me(session.accessToken).then(async (me) => {
+        const [nextReadings, nextAlerts, nextMedication] = await Promise.all([
+          api.observations(me.id, session.accessToken), api.alerts(session.accessToken), api.medications(me.id, session.accessToken),
+        ]);
+        if (!cancelled) { setProfile(me); setReadings(nextReadings); setAlerts(nextAlerts); setMedications(nextMedication); setError(""); }
+      }).catch(() => { if (!cancelled) setError("Your recent activity could not be refreshed. Please try again."); }).finally(() => { if (!cancelled) setLoading(false); });
+    };
+    refresh(); window.addEventListener("rpm:observations-changed", refresh);
+    return () => { cancelled = true; window.removeEventListener("rpm:observations-changed", refresh); };
   }, []);
-  const latest = readings[0]; const active = alerts.filter((alert) => !["acknowledged", "resolved"].includes(alert.status));
+  if (loading) return <p aria-live="polite" className="card">Refreshing your recent activity…</p>;
+  if (error) return <p role="alert" className="form-error">{error}</p>;
+  const latest = readings[0];
+  const active = alerts.filter((alert) => alert.status !== "resolved");
   return <>
-    {error && <p role="alert" className="card">{error}</p>}
-    <section className="card" aria-labelledby="welcome-heading"><h2 id="welcome-heading" className="text-xl font-semibold">{profile ? `Welcome, ${profile.display_name}` : "Loading your secure summary…"}</h2>
-      <p className="muted">Data source: secure server refresh. Reading age: {age(latest?.measured_at)}.</p>
-      {latest && <p><strong>Latest reading:</strong> {latest.type.replace("_", " ")} — {latest.value ?? `${latest.components.systolic}/${latest.components.diastolic}`} {latest.unit} ({latest.source}).</p>}
+    <section className="card" aria-labelledby="welcome-heading"><span className="summary-icon mint"><Icon name="activity" size={18} /></span><h2 id="welcome-heading">{profile ? `Welcome, ${profile.display_name}` : "Your latest reading"}</h2>
+      {latest ? <><div className="summary-value">{latest.value ?? `${latest.components.systolic}/${latest.components.diastolic}`} <small style={{ fontSize: 13, fontWeight: 500 }}>{latest.unit}</small></div><p className="muted">{latest.type.replaceAll("_", " ")} · {latest.source}<br/><time dateTime={latest.measured_at}>{new Date(latest.measured_at).toLocaleString()}</time></p></> : <p className="muted">Your daily record starts with one check-in. Save a reading above to see it here.</p>}
+      <Link className="card-foot-link" href="/patient/trends">Explore your history <Icon name="arrow" size={15} /></Link>
     </section>
-    <section className="card" aria-labelledby="alerts-heading"><h2 id="alerts-heading" className="text-xl font-semibold">Active alerts</h2>
-      {active.length ? <ul>{active.map((alert) => <li key={alert.id}><strong>{alert.severity}</strong>: {alert.guidance} ({alert.status})</li>)}</ul> : <p className="muted">No active server-supplied alerts.</p>}
-      <p className="muted">This is not an emergency service. Do not wait for this app in an emergency.</p>
+    <section className="card" aria-labelledby="alerts-heading"><span className="summary-icon blue"><Icon name="bell" size={18} /></span><h2 id="alerts-heading">Active alerts</h2>
+      <div className="summary-value">{active.length}</div><p className="muted">{active.length ? "Recorded alerts awaiting resolution. Open your alerts to read their status and guidance." : "No active server-supplied alerts."}</p>
+      {active.slice(0, 1).map((alert) => <p key={alert.id}><strong>{alert.severity}:</strong> {alert.guidance}</p>)}
+      <Link className="card-foot-link" href="/patient/alerts">Review alerts <Icon name="arrow" size={15} /></Link>
     </section>
-    <section className="card" aria-labelledby="medications-heading"><h2 id="medications-heading" className="text-xl font-semibold">Today’s medications</h2>
-      {medications.length ? <ul>{medications.map((medication) => <li key={medication.id}>{medication.name} — {medication.frequency}</li>)}</ul> : <p className="muted">No current synthetic medication record is available.</p>}
-      <p className="muted">Medication reports are self-reported. A missing report is not treated as a missed dose.</p>
+    <section className="card" aria-labelledby="medications-heading"><span className="summary-icon lilac"><Icon name="pill" size={18} /></span><h2 id="medications-heading">Medication records</h2>
+      {medications.length ? <ul className="mt-3 space-y-2">{medications.slice(0, 3).map((medication) => <li key={medication.id}><strong>{medication.name}</strong><br/><span className="muted">{medication.frequency}</span></li>)}</ul> : <p className="muted">No current synthetic medication records. Physician-authored records will appear here.</p>}
+      <Link className="card-foot-link" href="/patient/medications">View medications <Icon name="arrow" size={15} /></Link>
     </section>
   </>;
 }

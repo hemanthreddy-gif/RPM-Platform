@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -12,7 +12,15 @@ from app.core.database import get_session
 from app.modules.audit.service import record
 from app.modules.identity.router import require_role
 from app.modules.identity.schemas import Principal
+from app.modules.patients import service
 from app.modules.patients.authorization import require_patient_access, set_database_identity
+from app.modules.patients.schemas import (
+    ConnectionCreate,
+    PatientConnection,
+    PatientProfile,
+    PhysicianDirectoryItem,
+    ProfileUpdate,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["patients"])
 
@@ -39,75 +47,133 @@ class WorklistItem(BaseModel):
     latest_observation_at: datetime | None
 
 
-@router.get("/patients/me")
+@router.get("/patients/me", response_model=PatientProfile)
 def get_me(
     request: Request,
     principal: Principal = Depends(require_role("patient")),
     session: Session = Depends(get_session),
 ) -> dict[str, object]:
-    set_database_identity(session, principal)
-    row = (
-        session.execute(
-            text(
-                "SELECT id, display_name, timezone, has_hypertension FROM patients WHERE user_id = :user_id"
-            ),
-            {"user_id": principal.user_id},
-        )
-        .mappings()
-        .one_or_none()
-    )
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Patient profile not found"
-        )
-    record(
-        session,
-        actor_id=principal.user_id,
-        actor_role=principal.role,
-        action="patient.read_self",
-        resource_type="patient",
-        resource_id=row["id"],
-        patient_id=row["id"],
-        ip=request.client.host if request.client else None,
+    result = service.read_profile(
+        session, principal, ip=request.client.host if request.client else None
     )
     session.commit()
-    return dict(row)
+    return result
 
 
-@router.get("/patients/{patient_id}")
+@router.patch("/patients/me", response_model=PatientProfile)
+def patch_me(
+    payload: ProfileUpdate,
+    request: Request,
+    principal: Principal = Depends(require_role("patient")),
+    session: Session = Depends(get_session),
+) -> dict[str, object]:
+    result = service.update_profile(
+        session, principal, payload, request.client.host if request.client else None
+    )
+    session.commit()
+    return result
+
+
+@router.put("/patients/me/picture", response_model=PatientProfile)
+async def put_picture(
+    request: Request,
+    principal: Principal = Depends(require_role("patient")),
+    session: Session = Depends(get_session),
+) -> dict[str, object]:
+    payload = bytearray()
+    async for chunk in request.stream():
+        payload.extend(chunk)
+        if len(payload) > service.MAX_PICTURE_BYTES:
+            raise HTTPException(status_code=413, detail="Picture must not exceed 2 MB")
+    result = service.update_picture(
+        session,
+        principal,
+        bytes(payload),
+        request.headers.get("content-type"),
+        request.client.host if request.client else None,
+    )
+    session.commit()
+    return result
+
+
+@router.get("/patients/{patient_id}/picture")
+def get_picture(
+    patient_id: UUID,
+    request: Request,
+    principal: Principal = Depends(require_role("patient", "physician")),
+    session: Session = Depends(get_session),
+) -> Response:
+    picture = service.read_picture(
+        session, principal, patient_id, request.client.host if request.client else None
+    )
+    session.commit()
+    return Response(
+        picture,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )
+
+
+@router.get("/physicians", response_model=list[PhysicianDirectoryItem])
+def get_physician_directory(
+    principal: Principal = Depends(require_role("patient")),
+    session: Session = Depends(get_session),
+) -> list[dict[str, object]]:
+    return service.physician_directory(session)
+
+
+@router.get("/patients/me/connections", response_model=list[PatientConnection])
+def get_connections(
+    request: Request,
+    principal: Principal = Depends(require_role("patient")),
+    session: Session = Depends(get_session),
+) -> list[dict[str, object]]:
+    result = service.list_connections(
+        session, principal, request.client.host if request.client else None
+    )
+    session.commit()
+    return result
+
+
+@router.post("/patients/me/connections", response_model=PatientConnection, status_code=201)
+def post_connection(
+    payload: ConnectionCreate,
+    request: Request,
+    principal: Principal = Depends(require_role("patient")),
+    session: Session = Depends(get_session),
+) -> dict[str, object]:
+    result = service.connect_physician(
+        session, principal, payload.physician_id, request.client.host if request.client else None
+    )
+    session.commit()
+    return result
+
+
+@router.delete("/patients/me/connections/{connection_id}", status_code=204)
+def delete_connection(
+    connection_id: UUID,
+    request: Request,
+    principal: Principal = Depends(require_role("patient")),
+    session: Session = Depends(get_session),
+) -> None:
+    service.disconnect_physician(
+        session, principal, connection_id, request.client.host if request.client else None
+    )
+    session.commit()
+
+
+@router.get("/patients/{patient_id}", response_model=PatientProfile)
 def get_patient(
     patient_id: UUID,
     request: Request,
     principal: Principal = Depends(require_role("patient", "physician")),
     session: Session = Depends(get_session),
 ) -> dict[str, object]:
-    require_patient_access(session, principal, patient_id)
-    row = (
-        session.execute(
-            text(
-                "SELECT id, display_name, timezone, has_hypertension FROM patients WHERE id = :id"
-            ),
-            {"id": patient_id},
-        )
-        .mappings()
-        .one_or_none()
-    )
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Patient profile not found"
-        )
-    record(
-        session,
-        actor_id=principal.user_id,
-        actor_role=principal.role,
-        action="patient.read",
-        resource_type="patient",
-        resource_id=patient_id,
-        patient_id=patient_id,
-        ip=request.client.host if request.client else None,
+    result = service.read_profile(
+        session, principal, patient_id, request.client.host if request.client else None
     )
     session.commit()
-    return dict(row)
+    return result
 
 
 @router.get("/physician/patients", response_model=list[WorklistItem])

@@ -1,4 +1,4 @@
-import type { Alert, Device, DevicePairing, MealPhoto, MealPhotoComment, Medication, Message, MessageThread, Observation, ObservationCreate, PatientProfile, PhysicianWorklistItem, TokenResponse } from "./generated";
+import type { Alert, Device, DevicePairing, MealPhoto, MealPhotoComment, Medication, Message, MessageThread, Observation, ObservationCreate, PatientConnection, PatientProfile, Physician, PhysicianWorklistItem, ProfileUpdate, TokenResponse } from "./generated";
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string) { super(message); }
@@ -29,8 +29,22 @@ export const api = {
   login: (email: string, password: string, totp_code?: string) =>
     request<TokenResponse>("/api/v1/auth/login", { method: "POST", body: JSON.stringify({ email, password, totp_code }) }),
   refresh: (refresh_token: string) => request<TokenResponse>("/api/v1/auth/refresh", { method: "POST", body: JSON.stringify({ refresh_token }) }),
-  logout: (refresh_token: string) => request<void>("/api/v1/auth/logout", { method: "POST", body: JSON.stringify({ refresh_token }) }),
+  logout: (refresh_token: string, token?: string) => request<void>("/api/v1/auth/logout", { method: "POST", body: JSON.stringify({ refresh_token }) }, token),
   me: (token: string) => request<PatientProfile>("/api/v1/patients/me", {}, token),
+  physicianMe: (token: string) => request<Physician & { registration_no: string }>("/api/v1/auth/physician-profile", {}, token),
+  updateProfile: (payload: ProfileUpdate, token: string) => request<PatientProfile>("/api/v1/patients/me", { method: "PATCH", body: JSON.stringify(payload) }, token),
+  uploadProfilePicture: async (file: File, token: string) => {
+    const response = await fetch(`${baseUrl}/api/v1/patients/me/picture`, {
+      method: "PUT", headers: { Authorization: `Bearer ${token}`, "Content-Type": file.type },
+      body: await file.arrayBuffer(), cache: "no-store",
+    });
+    if (!response.ok) throw new ApiError(response.status, "The profile photo could not be saved.");
+  },
+  patientPicture: (patientId: string, token: string) => imageRequest(`/api/v1/patients/${patientId}/picture`, token),
+  physicians: (token: string) => request<Physician[]>("/api/v1/physicians", {}, token),
+  connections: (token: string) => request<PatientConnection[]>("/api/v1/patients/me/connections", {}, token),
+  connectPhysician: (physicianId: string, token: string) => request<PatientConnection>("/api/v1/patients/me/connections", { method: "POST", body: JSON.stringify({ physician_id: physicianId, consent: true }) }, token),
+  disconnectPhysician: (connectionId: string, token: string) => request<void>(`/api/v1/patients/me/connections/${connectionId}`, { method: "DELETE" }, token),
   worklist: (token: string, query = "") => request<PhysicianWorklistItem[]>(`/api/v1/physician/patients?query=${encodeURIComponent(query)}`, {}, token),
   patient: (patientId: string, token: string) => request<PatientProfile>(`/api/v1/patients/${patientId}`, {}, token),
   observations: (patientId: string, token: string) => request<Observation[]>(`/api/v1/patients/${patientId}/observations`, {}, token),

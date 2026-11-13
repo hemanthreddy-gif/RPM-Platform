@@ -10,8 +10,8 @@ GLUCOSE_MGDL_PER_MMOLL = Decimal("18.016")
 
 
 class ObservationCreate(BaseModel):
-    type: Literal["glucose", "blood_pressure", "heart_rate", "spo2"]
-    value: Decimal | None = Field(default=None, gt=0)
+    type: Literal["glucose", "blood_pressure", "heart_rate", "spo2", "sleep"]
+    value: Decimal | None = Field(default=None, ge=0)
     unit: str = Field(min_length=1, max_length=32)
     components: dict[str, Decimal] = Field(default_factory=dict)
     measured_at: datetime
@@ -20,6 +20,12 @@ class ObservationCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_shape(self) -> "ObservationCreate":
+        if self.type == "sleep":
+            if self.value is None or self.value > 24 or self.unit != "h" or self.components:
+                raise ValueError("Sleep requires 0 to 24 hours, unit h, and no components")
+            return self
+        if self.value is not None and self.value <= 0:
+            raise ValueError("This observation type requires a positive value")
         if self.type == "blood_pressure":
             required = {"systolic", "diastolic"}
             if not required.issubset(self.components) or any(

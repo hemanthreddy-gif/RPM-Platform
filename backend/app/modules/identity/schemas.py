@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
@@ -18,6 +18,44 @@ class ProvisionRequest(BaseModel):
     role: str = Field(pattern="^(physician|admin)$")
     display_name: str | None = Field(default=None, max_length=200)
     registration_no: str | None = Field(default=None, max_length=100)
+    specialty: str | None = Field(default=None, max_length=100)
+
+
+class PhysicianInvitationRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    email: EmailStr
+    display_name: str = Field(min_length=1, max_length=200)
+    registration_no: str = Field(min_length=1, max_length=100)
+    specialty: str | None = Field(default=None, max_length=100)
+
+
+class PhysicianInvitationResponse(BaseModel):
+    invitation_token: str
+    expires_at: datetime
+
+
+class PhysicianProfile(BaseModel):
+    id: UUID
+    display_name: str
+    specialty: str | None
+    registration_no: str
+
+
+class PhysicianOnboardingStart(BaseModel):
+    invitation_token: str = Field(min_length=20, max_length=256)
+    password: str = Field(min_length=12, max_length=256)
+
+
+class PhysicianEnrollmentResponse(BaseModel):
+    enrollment_token: str
+    provisioning_uri: str
+    expires_at: datetime
+
+
+class PhysicianOnboardingComplete(BaseModel):
+    enrollment_token: str = Field(min_length=20, max_length=256)
+    code: str = Field(pattern=r"^\d{6}$")
 
 
 class LoginRequest(BaseModel):

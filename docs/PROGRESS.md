@@ -823,3 +823,78 @@ medication behavior.
   `README.md`, `docs/PROJECT_HANDOFF.md`, and `docs/AI_INSTRUCTIONS.md` passed; `git diff --check`
   passed. No application code changed and no new application test run is claimed. The pre-existing
   `frontend/tsconfig.tsbuildinfo` modification was preserved and excluded from the handoff commit.
+
+## Patient and physician redesign, profiles and onboarding (2026-11-06)
+
+- Implemented the authorized Phase 13 slice in `docs/plans/phase-13.md`: descriptive responsive
+  landing page; consistent patient and physician navigation, forms, worklist, detail, alerts,
+  meal-photo, settings, history and medication screens. History and medication screens now read
+  real authorized API data. Loading, empty, retry and save states are explicit. The mandatory
+  synthetic-demo notice remains visible. No Figma file was supplied or modified.
+- Added editable patient name, birth date/derived age, gender, phone, timezone, height and weight,
+  plus private normalized JPEG/PNG profile photos. Added immutable self-reported sleep hours
+  (0–24), with existing audit/idempotency/outbox transactions and explicit exclusion from clinical
+  rule evaluation. No sleep threshold, medical score or clinical recommendation was invented.
+- Completed trusted physician invitations, expiring single-use redemption, password creation and
+  bounded MFA bootstrap. Privileged tokens are issued only after MFA confirmation. Mixed-case
+  invitation addresses remain compatible with sign-in. The three onboarding routes now use the
+  existing authentication rate limiter. Public registration still creates patients only.
+- Added activated-physician discovery, explicit monitoring consent, patient-controlled connections
+  and two-way messaging. Ending a connection immediately removes its access; shared legacy consent
+  is preserved for other active connections. Tightened conversation application checks and RLS to
+  the exact participants and their own active relationship/consent. Fixed browser PATCH/DELETE/PUT
+  CORS, authenticated logout, successful-reading refresh and workspace hydration.
+- Principal files: `frontend/app/globals.css`, public and role routes, `frontend/components/`
+  (profile, care team, onboarding, worklist/detail, reading and shared shell), typed API clients;
+  `backend/app/modules/patients/{schemas,service,router}.py`, identity onboarding/schema/router,
+  observations schema/router, messaging authorization/router, alert worker and `backend/app/main.py`.
+  New migrations `0014_patient_profile_sleep`, `0015_physician_onboarding`, and
+  `0016_conversation_participants` were reviewed and applied to local synthetic development/test
+  databases. A separate empty disposable database passed upgrade to head, downgrade to
+  `0013_bp_components`, then upgrade to head. The sleep enum label is intentionally retained on
+  downgrade; profile migration refuses to discard new profile data.
+- Backend verification passed:
+  `uv run --project backend ruff check backend`;
+  `uv run --project backend ruff format --check backend` (114 files);
+  `uv run --project backend mypy backend/app` (70 files);
+  `uv run --project backend lint-imports --config backend/.importlinter` (1 kept, 0 broken).
+  Native checks used `UV_CACHE_DIR=<repo>/.cache/uv` after a Windows sandbox cache-write failure.
+- Final full database test command:
+  `docker compose run --rm --no-deps --volume 'C:/Users/heman/Downloads/RPM-Platform:/repo' --workdir /repo --env 'UV_PROJECT_ENVIRONMENT=/tmp/rpm-test-venv' --env 'DATABASE_URL=postgresql+psycopg://rpm:development-only-change-me@postgres:5432/rpm_test' backend uv run --project backend --locked python -m pytest backend/tests --cov=app --cov-report=term-missing`.
+  Result: **175 passed**, one Starlette/httpx deprecation warning, **71% overall coverage**;
+  clinical evaluator **96%**, clinical_rules package 141/146 statements covered (>95%). The
+  repository's 80% overall target remains unmet; no coverage gate was weakened. New regression
+  coverage includes image bounds/privacy, profile validation, sleep replay/isolation, exact
+  conversation access, revoked/shared consent, invitation replay/expiry/MFA and auth rate limits.
+- Frontend verification: `npm --prefix frontend run lint`, `npm --prefix frontend run typecheck`,
+  and `npm --prefix frontend run test:run` passed (**7 files, 15 tests**). Native Windows
+  `npm --prefix frontend run build` still fails starting the Turbopack CSS subprocess.
+  `docker compose build frontend` and `docker compose run --rm --no-deps frontend npm run build`
+  passed on Linux, generating 19 routes. Live OpenAPI was checked for the new fields/endpoints.
+  Local backend, worker and frontend images/services were rebuilt; no external service was
+  deployed. Screenshots are in ignored `frontend/test-results/` and were visually reviewed.
+- Browser verification covers four synthetic scenarios, including invitation/MFA, patient
+  demographics/photo, consent, sleep sharing, two-way messages and immediate access revocation.
+  Axe checks cover landing/setup/profile/patient/physician views; reflow checks cover 320–390px
+  widths, and hydration errors are asserted absent. Automated checks do not establish full WCAG
+  conformance or replace human usability/clinical review. Final rerun result is recorded below.
+- Follow-up user request authorized deployment. Hosting discovery found Railway and Render
+  integrations available but **not connected**; Railway was suggested and hosting-account input
+  requested. The connected Sites host uses Workers and cannot host this FastAPI/PostgreSQL/Celery
+  stack as-is. No public URL was created. The development app remains at `http://localhost:3000`.
+  Do not tunnel its default credentials or present localhost as a public deployment. Existing
+  release requirements in `docs/deployment-readiness.md`/ADR 007 remain open: restricted demo
+  access, protected administration, managed secrets/HTTPS, safe reset and release evidence.
+- Documentation updated: README, architecture, handoff, AI instructions, slice notes and ADR 008.
+  Existing `frontend/tsconfig.tsbuildinfo` modification was preserved; no commit/push/tag occurred.
+  No remote CI run is claimed for these uncommitted changes. Proposed commit message:
+  `feat: redesign patient and physician workflows with secure onboarding`.
+- Next safe step: connect the chosen hosting account, implement and verify the restricted
+  synthetic-demo deployment configuration and remaining release controls, then deploy and
+  verify its returned URL. Overall coverage, mutation/survivor review and human evaluation remain
+  separate documented gaps; this local functional slice does not close the full release phase.
+- Final browser rerun after the shared-consent, email-case and rate-limit fixes:
+  `npm --prefix frontend run test:e2e -- --workers=1` — **4 passed (1.3m)**.
+  `git -c core.safecrlf=false diff --check` passed. The user delegated host selection; **Railway
+  was selected**, but its integration remains unconnected, so no hosting resources or charges
+  were created and no remote deployment link exists yet.

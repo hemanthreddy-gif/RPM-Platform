@@ -3,8 +3,9 @@
 > **Demo with synthetic data. Not for medical use.**
 
 RPM Platform is an educational research prototype for exploring diabetes and hypertension
-monitoring with synthetic data. Patients can record readings and submit meal photos; authorized
-physicians can inspect readings, review synthetic alerts and comment on meal photos. It is not an
+monitoring with synthetic data. Patients can create a profile, record readings and sleep, submit
+meal photos and connect with a physician. Authorized physicians can inspect shared records,
+review synthetic alerts, comment on meal photos and exchange non-urgent messages. It is not an
 emergency service, does not provide real-time supervision, and has not been clinically validated.
 No clinician has approved its demo rule fixtures.
 
@@ -12,6 +13,9 @@ No clinician has approved its demo rule fixtures.
 
 - Patient and physician interfaces, synthetic observations, append-only corrections, and
   deterministic demo alert rules with persistent notification outbox/retry state.
+- Responsive landing page and workspaces, private profile photos, demographics and self-reported
+  height/weight; sleep recording without clinical scoring; patient-controlled monitoring connections.
+- Trusted physician invitations with password creation and mandatory authenticator enrollment.
 - Patient meal-photo submission and authorized physician comments. There is no food recognition,
   portion estimation or nutrient calculation in the selected workflow.
 - Source-linked descriptive summaries rendered deterministically for patients; optional AI is
@@ -51,8 +55,13 @@ independently verified.
 4. In another terminal, apply migrations only to the disposable synthetic development database:
    `docker compose exec backend uv run --no-dev alembic -c alembic.ini upgrade head`.
 5. Open [http://localhost:3000](http://localhost:3000). Choose **Explore as a patient**, use fictional details and a password of at least 12 characters, then enter the
-   patient demo. Physician accounts require trusted provisioning and MFA; self-onboarding is not
-   complete. See [the demo script](docs/demo-script.md). There are no published demo credentials.
+   patient demo. Open **My profile** to add fictional details and **Care team** to connect a physician.
+6. For physician setup, open **Physician account setup**. An authenticated administrator can issue
+   invitations from `/admin`; a local operator can expand the administrator section on the setup
+   page and use their configured `TRUSTED_ADMIN_PROVISIONING_KEY`. The physician redeems the
+   one-time code, sets a password, adds the setup key to an authenticator and verifies a six-digit
+   code. The patient then explicitly connects and consents from **Care team**. No invitation email
+   is sent and no medical registration is verified. There are no published demo credentials.
 
 The development stack binds published ports to localhost and uses development-only configuration. Candidate
 multi-stage Dockerfiles are not an approved public deployment. See
@@ -73,8 +82,9 @@ reset against any database or object store containing non-demo data.
 Methods, denominators and limitations are in the [evaluation report](docs/eval/report.md) and
 [performance record](docs/eval/performance.md). Regenerate the report with
 `uv run --project backend python backend/eval/report.py`. See [progress](docs/PROGRESS.md) for exact
-check results and remaining release-gate, coverage, mutmut and frontend-build debt. Screenshots or
-video have not yet been recorded.
+check results and remaining release-gate, coverage, mutmut and native Windows build limitations.
+Browser verification captures desktop/mobile screenshots under ignored `frontend/test-results/`;
+these engineering checks do not replace human usability evaluation.
 
 ## Project handoff
 
